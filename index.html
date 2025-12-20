@@ -364,22 +364,22 @@
 <body>
     <div class="container">
         <header>
-            <h1>💰 Family Budget Dashboard 2026</h1>
+            <h1>ðŸ’° Family Budget Dashboard 2026</h1>
             <p>Interactive Financial Planning Tool - All Charts Update in Real-Time</p>
         </header>
         
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab(event, 'inputs')">📥 Inputs</button>
-            <button class="tab-btn" onclick="switchTab(event, 'dashboard')">📊 Dashboard</button>
-            <button class="tab-btn" onclick="switchTab(event, 'monthly')">📅 Monthly</button>
-            <button class="tab-btn" onclick="switchTab(event, 'investments')">📈 Investments</button>
-            <button class="tab-btn" onclick="switchTab(event, 'insights')">💡 Insights</button>
-            <button class="tab-btn" onclick="switchTab(event, 'charts')">📉 Charts</button>
+            <button class="tab-btn active" onclick="switchTab(event, 'inputs')">ðŸ“¥ Inputs</button>
+            <button class="tab-btn" onclick="switchTab(event, 'dashboard')">ðŸ“Š Dashboard</button>
+            <button class="tab-btn" onclick="switchTab(event, 'monthly')">ðŸ“… Monthly</button>
+            <button class="tab-btn" onclick="switchTab(event, 'investments')">ðŸ“ˆ Investments</button>
+            <button class="tab-btn" onclick="switchTab(event, 'insights')">ðŸ’¡ Insights</button>
+            <button class="tab-btn" onclick="switchTab(event, 'charts')">ðŸ“‰ Charts</button>
         </div>
         
         <div id="inputs" class="tab-content active">
             <div class="input-section">
-                <h2>💰 Your Monthly Income</h2>
+                <h2>ðŸ’° Your Monthly Income</h2>
                 <div class="input-group">
                     <div class="input-field">
                         <label>Primary Salary</label>
@@ -401,7 +401,7 @@
             </div>
             
             <div class="input-section">
-                <h2>💸 Your Fixed Bills</h2>
+                <h2>ðŸ’¸ Your Fixed Bills</h2>
                 <div class="input-group">
                     <div class="input-field">
                         <label>Housing/Mortgage</label>
@@ -431,7 +431,7 @@
             </div>
             
             <div class="input-section">
-                <h2>🍽️ Your Variable Spending</h2>
+                <h2>ðŸ½ï¸ Your Variable Spending</h2>
                 <div class="input-group">
                     <div class="input-field">
                         <label>Food & Groceries</label>
@@ -449,7 +449,7 @@
             </div>
             
             <div class="input-section">
-                <h2>📈 Your Investments</h2>
+                <h2>ðŸ“ˆ Your Investments</h2>
                 <div class="input-group">
                     <div class="input-field">
                         <label>Emergency Fund Monthly</label>
@@ -474,8 +474,8 @@
                 </div>
             </div>
             
-            <button class="update-btn" onclick="updateDashboard()">✅ Update Dashboard</button>
-            <button class="update-btn" onclick="resetToDefaults()">🔄 Reset to Defaults</button>
+            <button class="update-btn" onclick="updateDashboard()">âœ… Update Dashboard</button>
+            <button class="update-btn" onclick="resetToDefaults()">ðŸ”„ Reset to Defaults</button>
         </div>
         
         <div id="dashboard" class="tab-content">
@@ -501,7 +501,7 @@
             </div>
             
             <div class="table-section">
-                <div class="table-title">💰 Monthly Income</div>
+                <div class="table-title">ðŸ’° Monthly Income</div>
                 <table class="table-income">
                     <thead>
                         <tr>
@@ -517,7 +517,7 @@
             </div>
             
             <div class="table-section">
-                <div class="table-title">💸 Monthly Expenses</div>
+                <div class="table-title">ðŸ’¸ Monthly Expenses</div>
                 <table class="table-expenses">
                     <thead>
                         <tr>
@@ -533,7 +533,7 @@
             </div>
             
             <div class="table-section">
-                <div class="table-title">📈 Your Investments</div>
+                <div class="table-title">ðŸ“ˆ Your Investments</div>
                 <table class="table-investments">
                     <thead>
                         <tr>
@@ -616,19 +616,19 @@
             <h2 style="margin-bottom: 20px;">Financial Dashboards & Visualizations</h2>
             <div class="charts-grid">
                 <div class="chart-container">
-                    <div class="chart-title">📊 Income Sources</div>
+                    <div class="chart-title">ðŸ“Š Income Sources</div>
                     <canvas id="incomeChart"></canvas>
                 </div>
                 <div class="chart-container">
-                    <div class="chart-title">💸 Expense Distribution</div>
+                    <div class="chart-title">ðŸ’¸ Expense Distribution</div>
                     <canvas id="expenseChart"></canvas>
                 </div>
                 <div class="chart-container">
-                    <div class="chart-title">📈 Monthly Cash Flow</div>
+                    <div class="chart-title">ðŸ“ˆ Monthly Cash Flow</div>
                     <canvas id="cashFlowChart"></canvas>
                 </div>
                 <div class="chart-container">
-                    <div class="chart-title">🎯 Portfolio Progress</div>
+                    <div class="chart-title">ðŸŽ¯ Portfolio Progress</div>
                     <canvas id="portfolioChart"></canvas>
                 </div>
             </div>
@@ -754,7 +754,7 @@
                     <td>${(bonusTotal / totalIncome * 100).toFixed(2)}%</td>
                 </tr>
                 <tr style="font-weight: 700; background: rgba(76, 175, 80, 0.2);">
-                    <td>✅ TOTAL ANNUAL INCOME</td>
+                    <td>âœ… TOTAL ANNUAL INCOME</td>
                     <td>${calculated.monthlyIncome.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${totalIncome.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>100%</td>
@@ -767,15 +767,15 @@
             const totalIncome = calculated.annualIncome;
             
             const expenses = [
-                { name: '🏠 Housing', value: inputs.housing },
-                { name: '🛡️ Insurance', value: inputs.insurance },
-                { name: '📚 Education', value: inputs.education },
-                { name: '⚡ Utilities', value: inputs.utilities },
-                { name: '🚗 Transportation', value: inputs.transport },
-                { name: '📱 Communication', value: inputs.communication },
-                { name: '🍽️ Food & Groceries', value: inputs.food },
-                { name: '🎭 Entertainment', value: inputs.entertainment },
-                { name: '🎁 Seasonal/Misc', value: inputs.seasonal }
+                { name: 'ðŸ  Housing', value: inputs.housing },
+                { name: 'ðŸ›¡ï¸ Insurance', value: inputs.insurance },
+                { name: 'ðŸ“š Education', value: inputs.education },
+                { name: 'âš¡ Utilities', value: inputs.utilities },
+                { name: 'ðŸš— Transportation', value: inputs.transport },
+                { name: 'ðŸ“± Communication', value: inputs.communication },
+                { name: 'ðŸ½ï¸ Food & Groceries', value: inputs.food },
+                { name: 'ðŸŽ­ Entertainment', value: inputs.entertainment },
+                { name: 'ðŸŽ Seasonal/Misc', value: inputs.seasonal }
             ];
             
             let html = '';
@@ -798,7 +798,7 @@
             
             html += `
                 <tr style="font-weight: 700; background: rgba(255, 107, 107, 0.2);">
-                    <td>✅ TOTAL EXPENSES</td>
+                    <td>âœ… TOTAL EXPENSES</td>
                     <td>${monthlyTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${annualTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${totalPercent}%</td>
@@ -813,11 +813,11 @@
             const totalIncome = calculated.annualIncome;
             
             const investments = [
-                { name: '💰 Emergency Fund', value: inputs.invEmergency },
-                { name: '📊 Stock Market', value: inputs.invStock },
-                { name: '🏢 Real Estate Fund', value: inputs.invRealEstate },
-                { name: '🎓 Education Fund', value: inputs.invEducation },
-                { name: '🏦 Retirement', value: inputs.invRetirement }
+                { name: 'ðŸ’° Emergency Fund', value: inputs.invEmergency },
+                { name: 'ðŸ“Š Stock Market', value: inputs.invStock },
+                { name: 'ðŸ¢ Real Estate Fund', value: inputs.invRealEstate },
+                { name: 'ðŸŽ“ Education Fund', value: inputs.invEducation },
+                { name: 'ðŸ¦ Retirement', value: inputs.invRetirement }
             ];
             
             let html = '';
@@ -839,7 +839,7 @@
             
             html += `
                 <tr style="font-weight: 700; background: rgba(102, 126, 234, 0.2);">
-                    <td>📈 TOTAL INVESTMENT</td>
+                    <td>ðŸ“ˆ TOTAL INVESTMENT</td>
                     <td>${calculated.monthlyInvestment.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${annualInvestment.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${investPercent}%</td>
@@ -887,11 +887,11 @@
             const tbody = document.getElementById('portfolioTable');
             
             const portfolios = [
-                { name: '💰 Emergency Fund', current: 45000, monthly: inputs.invEmergency, target: 90000, growth: 3 },
-                { name: '📊 Stock Market', current: 18000, monthly: inputs.invStock, target: 27000, growth: 10 },
-                { name: '🏢 Real Estate Fund', current: 8000, monthly: inputs.invRealEstate, target: 14000, growth: 6 },
-                { name: '🎓 Education Fund', current: 12000, monthly: inputs.invEducation, target: 16800, growth: 6 },
-                { name: '🏦 Retirement', current: 35000, monthly: inputs.invRetirement, target: 42200, growth: 7 }
+                { name: 'ðŸ’° Emergency Fund', current: 45000, monthly: inputs.invEmergency, target: 90000, growth: 3 },
+                { name: 'ðŸ“Š Stock Market', current: 18000, monthly: inputs.invStock, target: 27000, growth: 10 },
+                { name: 'ðŸ¢ Real Estate Fund', current: 8000, monthly: inputs.invRealEstate, target: 14000, growth: 6 },
+                { name: 'ðŸŽ“ Education Fund', current: 12000, monthly: inputs.invEducation, target: 16800, growth: 6 },
+                { name: 'ðŸ¦ Retirement', current: 35000, monthly: inputs.invRetirement, target: 42200, growth: 7 }
             ];
             
             let html = '';
@@ -926,7 +926,7 @@
             
             html += `
                 <tr style="font-weight: 700; background: rgba(102, 126, 234, 0.2);">
-                    <td>📈 TOTAL PORTFOLIO</td>
+                    <td>ðŸ“ˆ TOTAL PORTFOLIO</td>
                     <td>${totalCurrent.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${(inputs.invEmergency + inputs.invStock + inputs.invRealEstate + inputs.invEducation + inputs.invRetirement).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                     <td>${totalTarget.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
@@ -958,13 +958,13 @@
             if (calculated.expenseRatio > 100) {
                 insights += `
                     <div class="insight-text warning">
-                        ⚠️ <strong>Budget Alert:</strong> You're spending ${(calculated.expenseRatio - 100).toFixed(1)}% more than your income. Consider cutting discretionary spending by 12%.
+                        âš ï¸ <strong>Budget Alert:</strong> You're spending ${(calculated.expenseRatio - 100).toFixed(1)}% more than your income. Consider cutting discretionary spending by 12%.
                     </div>
                 `;
             } else {
                 insights += `
                     <div class="insight-text positive">
-                        ✅ <strong>Good News:</strong> Your expenses are within ${(100 - calculated.expenseRatio).toFixed(1)}% of your income!
+                        âœ… <strong>Good News:</strong> Your expenses are within ${(100 - calculated.expenseRatio).toFixed(1)}% of your income!
                     </div>
                 `;
             }
@@ -972,19 +972,19 @@
             if (emergencyFundMonths < 3) {
                 insights += `
                     <div class="insight-text warning">
-                        🚨 <strong>Emergency Fund Critical:</strong> You have ${emergencyFundMonths} months of expenses covered. Build to 6 months (90,000) as priority.
+                        ðŸš¨ <strong>Emergency Fund Critical:</strong> You have ${emergencyFundMonths} months of expenses covered. Build to 6 months (90,000) as priority.
                     </div>
                 `;
             } else if (emergencyFundMonths < 6) {
                 insights += `
                     <div class="insight-text warning">
-                        ⚠️ <strong>Build Emergency Fund:</strong> You have ${emergencyFundMonths} months covered. Target 6 months.
+                        âš ï¸ <strong>Build Emergency Fund:</strong> You have ${emergencyFundMonths} months covered. Target 6 months.
                     </div>
                 `;
             } else {
                 insights += `
                     <div class="insight-text positive">
-                        ✅ <strong>Emergency Fund Strong:</strong> You have ${emergencyFundMonths} months of safety net!
+                        âœ… <strong>Emergency Fund Strong:</strong> You have ${emergencyFundMonths} months of safety net!
                     </div>
                 `;
             }
@@ -992,7 +992,7 @@
             if (calculated.savingsRate >= 20) {
                 insights += `
                     <div class="insight-text positive">
-                        🎉 <strong>Excellent Savings Rate:</strong> ${calculated.savingsRate}% of your income goes to investments!
+                        ðŸŽ‰ <strong>Excellent Savings Rate:</strong> ${calculated.savingsRate}% of your income goes to investments!
                     </div>
                 `;
             }

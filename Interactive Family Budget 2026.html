@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Budget Dashboard 2026 - Interactive</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            overflow-x: auto;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            min-width: 150px;
+        }
+        
+        .tab-btn:hover {
+            background: #e9ecef;
+            color: #667eea;
+        }
+        
+        .tab-btn.active {
+            color: white;
+            background: #667eea;
+            border-bottom-color: #764ba2;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.3s;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .input-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .input-field {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-field label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 0.95em;
+        }
+        
+        .input-field input {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .input-field input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+        
+        .table-section {
+            margin-bottom: 30px;
+        }
+        
+        .table-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th {
+            font-weight: 700;
+            padding: 12px 15px;
+            text-align: left;
+            color: white;
+            font-size: 0.95em;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .table-income th {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+        
+        .table-income tbody tr {
+            background: #f1f8e9;
+        }
+        
+        .table-income tbody tr:hover {
+            background: #e8f5e9;
+        }
+        
+        .table-expenses th {
+            background: linear-gradient(135deg, #FF6B6B, #ee5a5a);
+        }
+        
+        .table-expenses tbody tr {
+            background: #ffe9e9;
+        }
+        
+        .table-expenses tbody tr:hover {
+            background: #ffd9d9;
+        }
+        
+        .table-bills th {
+            background: linear-gradient(135deg, #FFB84D, #ff9800);
+        }
+        
+        .table-bills tbody tr {
+            background: #fff3e0;
+        }
+        
+        .table-bills tbody tr:hover {
+            background: #ffe0b2;
+        }
+        
+        .table-investments th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        
+        .table-investments tbody tr {
+            background: #f0f3ff;
+        }
+        
+        .table-investments tbody tr:hover {
+            background: #e0e7ff;
+        }
+        
+        .table-summary th {
+            background: linear-gradient(135deg, #20B2AA, #1a9a8f);
+        }
+        
+        .table-summary tbody tr {
+            background: #e0f7f6;
+        }
+        
+        .table-summary tbody tr:hover {
+            background: #c8f4f1;
+        }
+        
+        .value-positive {
+            color: #4CAF50;
+            font-weight: 700;
+        }
+        
+        .value-negative {
+            color: #FF6B6B;
+            font-weight: 700;
+        }
+        
+        .value-warning {
+            color: #FFB84D;
+            font-weight: 700;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .chart-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .kpi-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .kpi-card.positive {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .kpi-card.warning {
+            background: linear-gradient(135deg, #FFB84D 0%, #ff9800 100%);
+        }
+        
+        .kpi-card.negative {
+            background: linear-gradient(135deg, #FF6B6B 0%, #ee5a5a 100%);
+        }
+        
+        .kpi-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .kpi-value {
+            font-size: 2em;
+            font-weight: 700;
+        }
+        
+        .progress-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .update-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px 5px;
+        }
+        
+        .update-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .insight-text {
+            background: #f0f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #333;
+        }
+        
+        .insight-text.warning {
+            background: #fff3e0;
+            border-left-color: #FFB84D;
+        }
+        
+        .insight-text.positive {
+            background: #f1f8e9;
+            border-left-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Family Budget Dashboard 2026</h1>
+            <p>Interactive Financial Planning Tool - All Charts Update in Real-Time</p>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'inputs')">📥 Inputs</button>
+            <button class="tab-btn" onclick="switchTab(event, 'dashboard')">📊 Dashboard</button>
+            <button class="tab-btn" onclick="switchTab(event, 'monthly')">📅 Monthly</button>
+            <button class="tab-btn" onclick="switchTab(event, 'investments')">📈 Investments</button>
+            <button class="tab-btn" onclick="switchTab(event, 'insights')">💡 Insights</button>
+            <button class="tab-btn" onclick="switchTab(event, 'charts')">📉 Charts</button>
+        </div>
+        
+        <div id="inputs" class="tab-content active">
+            <div class="input-section">
+                <h2>💰 Your Monthly Income</h2>
+                <div class="input-group">
+                    <div class="input-field">
+                        <label>Primary Salary</label>
+                        <input type="number" id="salary" value="15000" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>July Bonus</label>
+                        <input type="number" id="bonusJul" value="5000" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>November Bonus</label>
+                        <input type="number" id="bonusNov" value="3000" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>December Bonus</label>
+                        <input type="number" id="bonusDec" value="2000" onchange="updateDashboard()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <h2>💸 Your Fixed Bills</h2>
+                <div class="input-group">
+                    <div class="input-field">
+                        <label>Housing/Mortgage</label>
+                        <input type="number" id="housing" value="5250" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Insurance</label>
+                        <input type="number" id="insurance" value="600" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Education</label>
+                        <input type="number" id="education" value="1500" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Utilities</label>
+                        <input type="number" id="utilities" value="1800" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Transportation</label>
+                        <input type="number" id="transport" value="2250" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Communication</label>
+                        <input type="number" id="communication" value="300" onchange="updateDashboard()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <h2>🍽️ Your Variable Spending</h2>
+                <div class="input-group">
+                    <div class="input-field">
+                        <label>Food & Groceries</label>
+                        <input type="number" id="food" value="3000" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Entertainment</label>
+                        <input type="number" id="entertainment" value="450" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Seasonal/Misc</label>
+                        <input type="number" id="seasonal" value="1000" onchange="updateDashboard()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <h2>📈 Your Investments</h2>
+                <div class="input-group">
+                    <div class="input-field">
+                        <label>Emergency Fund Monthly</label>
+                        <input type="number" id="invEmergency" value="1200" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Stock Market Monthly</label>
+                        <input type="number" id="invStock" value="800" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Real Estate Monthly</label>
+                        <input type="number" id="invRealEstate" value="500" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Education Fund Monthly</label>
+                        <input type="number" id="invEducation" value="400" onchange="updateDashboard()">
+                    </div>
+                    <div class="input-field">
+                        <label>Retirement Monthly</label>
+                        <input type="number" id="invRetirement" value="600" onchange="updateDashboard()">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="update-btn" onclick="updateDashboard()">✅ Update Dashboard</button>
+            <button class="update-btn" onclick="resetToDefaults()">🔄 Reset to Defaults</button>
+        </div>
+        
+        <div id="dashboard" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Your Financial Overview</h2>
+            
+            <div class="kpi-grid">
+                <div class="kpi-card positive">
+                    <div class="kpi-label">Annual Income</div>
+                    <div class="kpi-value" id="kpiIncome">192,000</div>
+                </div>
+                <div class="kpi-card negative">
+                    <div class="kpi-label">Annual Spending</div>
+                    <div class="kpi-value" id="kpiSpending">193,200</div>
+                </div>
+                <div class="kpi-card positive">
+                    <div class="kpi-label">Annual Investment</div>
+                    <div class="kpi-value" id="kpiInvestment">42,000</div>
+                </div>
+                <div class="kpi-card warning">
+                    <div class="kpi-label">Expense Ratio</div>
+                    <div class="kpi-value" id="kpiRatio">107.6%</div>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <div class="table-title">💰 Monthly Income</div>
+                <table class="table-income">
+                    <thead>
+                        <tr>
+                            <th>Income Source</th>
+                            <th>Monthly</th>
+                            <th>Annual</th>
+                            <th>% of Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incomeTable">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="table-section">
+                <div class="table-title">💸 Monthly Expenses</div>
+                <table class="table-expenses">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Monthly</th>
+                            <th>Annual</th>
+                            <th>% of Income</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expensesTable">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="table-section">
+                <div class="table-title">📈 Your Investments</div>
+                <table class="table-investments">
+                    <thead>
+                        <tr>
+                            <th>Investment Type</th>
+                            <th>Monthly</th>
+                            <th>Annual</th>
+                            <th>% of Income</th>
+                        </tr>
+                    </thead>
+                    <tbody id="investmentsTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="monthly" class="tab-content">
+            <h2 style="margin-bottom: 20px;">2026 Month-by-Month Breakdown</h2>
+            <table class="table-summary" style="font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Income</th>
+                        <th>Bills</th>
+                        <th>Spending</th>
+                        <th>Investment</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="monthlyTable">
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="investments" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Investment Portfolio Strategy</h2>
+            <div class="table-section">
+                <div class="table-title">Portfolio 2026 Targets</div>
+                <table class="table-investments">
+                    <thead>
+                        <tr>
+                            <th>Investment Type</th>
+                            <th>Current Value</th>
+                            <th>Monthly Add</th>
+                            <th>2026 Target</th>
+                            <th>Growth %</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody id="portfolioTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="insights" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Financial Health Analysis</h2>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Health Score</div>
+                    <div class="kpi-value" id="healthScore">61%</div>
+                </div>
+                <div class="kpi-card positive">
+                    <div class="kpi-label">Debt-to-Income</div>
+                    <div class="kpi-value">0%</div>
+                </div>
+                <div class="kpi-card warning">
+                    <div class="kpi-label">Emergency Fund</div>
+                    <div class="kpi-value" id="emergencyMonths">2.9 mo</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Savings Rate</div>
+                    <div class="kpi-value" id="savingsRate">18.2%</div>
+                </div>
+            </div>
+            
+            <div id="insightsContainer"></div>
+        </div>
+        
+        <div id="charts" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Financial Dashboards & Visualizations</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">📊 Income Sources</div>
+                    <canvas id="incomeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">💸 Expense Distribution</div>
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">📈 Monthly Cash Flow</div>
+                    <canvas id="cashFlowChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">🎯 Portfolio Progress</div>
+                    <canvas id="portfolioChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let charts = {};
+        
+        function switchTab(evt, tabName) {
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+            
+            if (tabName === 'charts') {
+                setTimeout(() => {
+                    Object.values(charts).forEach(chart => {
+                        if (chart && chart.chart) chart.chart.resize();
+                    });
+                }, 100);
+            }
+        }
+        
+        function getInputValues() {
+            return {
+                salary: parseFloat(document.getElementById('salary').value) || 15000,
+                bonusJul: parseFloat(document.getElementById('bonusJul').value) || 5000,
+                bonusNov: parseFloat(document.getElementById('bonusNov').value) || 3000,
+                bonusDec: parseFloat(document.getElementById('bonusDec').value) || 2000,
+                housing: parseFloat(document.getElementById('housing').value) || 5250,
+                insurance: parseFloat(document.getElementById('insurance').value) || 600,
+                education: parseFloat(document.getElementById('education').value) || 1500,
+                utilities: parseFloat(document.getElementById('utilities').value) || 1800,
+                transport: parseFloat(document.getElementById('transport').value) || 2250,
+                communication: parseFloat(document.getElementById('communication').value) || 300,
+                food: parseFloat(document.getElementById('food').value) || 3000,
+                entertainment: parseFloat(document.getElementById('entertainment').value) || 450,
+                seasonal: parseFloat(document.getElementById('seasonal').value) || 1000,
+                invEmergency: parseFloat(document.getElementById('invEmergency').value) || 1200,
+                invStock: parseFloat(document.getElementById('invStock').value) || 800,
+                invRealEstate: parseFloat(document.getElementById('invRealEstate').value) || 500,
+                invEducation: parseFloat(document.getElementById('invEducation').value) || 400,
+                invRetirement: parseFloat(document.getElementById('invRetirement').value) || 600
+            };
+        }
+        
+        function calculateValues(inputs) {
+            const monthlyIncome = inputs.salary;
+            const annualIncome = inputs.salary * 12 + inputs.bonusJul + inputs.bonusNov + inputs.bonusDec;
+            
+            const monthlyBills = inputs.housing + inputs.insurance + inputs.education + inputs.utilities + inputs.transport + inputs.communication;
+            const annualBills = monthlyBills * 12;
+            
+            const monthlyVariable = inputs.food + inputs.entertainment + inputs.seasonal;
+            const annualVariable = monthlyVariable * 12;
+            
+            const monthlyInvestment = inputs.invEmergency + inputs.invStock + inputs.invRealEstate + inputs.invEducation + inputs.invRetirement;
+            const annualInvestment = monthlyInvestment * 12;
+            
+            const monthlyTotal = monthlyBills + monthlyVariable;
+            const annualTotal = annualBills + annualVariable;
+            
+            const expenseRatio = (annualTotal / annualIncome * 100).toFixed(1);
+            const savingsRate = (annualInvestment / annualIncome * 100).toFixed(1);
+            
+            return {
+                monthlyIncome,
+                annualIncome,
+                monthlyBills,
+                annualBills,
+                monthlyVariable,
+                annualVariable,
+                monthlyInvestment,
+                annualInvestment,
+                monthlyTotal,
+                annualTotal,
+                expenseRatio,
+                savingsRate
+            };
+        }
+        
+        function updateDashboard() {
+            const inputs = getInputValues();
+            const calculated = calculateValues(inputs);
+            
+            document.getElementById('kpiIncome').textContent = calculated.annualIncome.toLocaleString('en-US', {maximumFractionDigits: 0});
+            document.getElementById('kpiSpending').textContent = calculated.annualTotal.toLocaleString('en-US', {maximumFractionDigits: 0});
+            document.getElementById('kpiInvestment').textContent = calculated.annualInvestment.toLocaleString('en-US', {maximumFractionDigits: 0});
+            document.getElementById('kpiRatio').textContent = calculated.expenseRatio + '%';
+            
+            updateIncomeTable(inputs, calculated);
+            updateExpensesTable(inputs, calculated);
+            updateInvestmentsTable(inputs, calculated);
+            updateMonthlyTable(inputs, calculated);
+            updatePortfolioTable(inputs, calculated);
+            updateInsights(inputs, calculated);
+            updateCharts(inputs, calculated);
+        }
+        
+        function updateIncomeTable(inputs, calculated) {
+            const tbody = document.getElementById('incomeTable');
+            const totalIncome = calculated.annualIncome;
+            
+            const salaryAnnual = inputs.salary * 12;
+            const bonusTotal = inputs.bonusJul + inputs.bonusNov + inputs.bonusDec;
+            
+            tbody.innerHTML = `
+                <tr>
+                    <td>Primary Salary</td>
+                    <td>${inputs.salary.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${salaryAnnual.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${(salaryAnnual / totalIncome * 100).toFixed(2)}%</td>
+                </tr>
+                <tr>
+                    <td>Bonuses (Jul, Nov, Dec)</td>
+                    <td>${(bonusTotal / 12).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${bonusTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${(bonusTotal / totalIncome * 100).toFixed(2)}%</td>
+                </tr>
+                <tr style="font-weight: 700; background: rgba(76, 175, 80, 0.2);">
+                    <td>✅ TOTAL ANNUAL INCOME</td>
+                    <td>${calculated.monthlyIncome.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${totalIncome.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>100%</td>
+                </tr>
+            `;
+        }
+        
+        function updateExpensesTable(inputs, calculated) {
+            const tbody = document.getElementById('expensesTable');
+            const totalIncome = calculated.annualIncome;
+            
+            const expenses = [
+                { name: '🏠 Housing', value: inputs.housing },
+                { name: '🛡️ Insurance', value: inputs.insurance },
+                { name: '📚 Education', value: inputs.education },
+                { name: '⚡ Utilities', value: inputs.utilities },
+                { name: '🚗 Transportation', value: inputs.transport },
+                { name: '📱 Communication', value: inputs.communication },
+                { name: '🍽️ Food & Groceries', value: inputs.food },
+                { name: '🎭 Entertainment', value: inputs.entertainment },
+                { name: '🎁 Seasonal/Misc', value: inputs.seasonal }
+            ];
+            
+            let html = '';
+            expenses.forEach(exp => {
+                const annual = exp.value * 12;
+                const percent = (exp.value / totalIncome * 100 * 12).toFixed(2);
+                html += `
+                    <tr>
+                        <td>${exp.name}</td>
+                        <td>${exp.value.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${annual.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${percent}%</td>
+                    </tr>
+                `;
+            });
+            
+            const monthlyTotal = calculated.monthlyTotal;
+            const annualTotal = calculated.annualTotal;
+            const totalPercent = (annualTotal / totalIncome * 100).toFixed(2);
+            
+            html += `
+                <tr style="font-weight: 700; background: rgba(255, 107, 107, 0.2);">
+                    <td>✅ TOTAL EXPENSES</td>
+                    <td>${monthlyTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${annualTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${totalPercent}%</td>
+                </tr>
+            `;
+            
+            tbody.innerHTML = html;
+        }
+        
+        function updateInvestmentsTable(inputs, calculated) {
+            const tbody = document.getElementById('investmentsTable');
+            const totalIncome = calculated.annualIncome;
+            
+            const investments = [
+                { name: '💰 Emergency Fund', value: inputs.invEmergency },
+                { name: '📊 Stock Market', value: inputs.invStock },
+                { name: '🏢 Real Estate Fund', value: inputs.invRealEstate },
+                { name: '🎓 Education Fund', value: inputs.invEducation },
+                { name: '🏦 Retirement', value: inputs.invRetirement }
+            ];
+            
+            let html = '';
+            investments.forEach(inv => {
+                const annual = inv.value * 12;
+                const percent = (inv.value * 12 / totalIncome * 100).toFixed(2);
+                html += `
+                    <tr>
+                        <td>${inv.name}</td>
+                        <td>${inv.value.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${annual.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${percent}%</td>
+                    </tr>
+                `;
+            });
+            
+            const annualInvestment = calculated.annualInvestment;
+            const investPercent = (annualInvestment / totalIncome * 100).toFixed(2);
+            
+            html += `
+                <tr style="font-weight: 700; background: rgba(102, 126, 234, 0.2);">
+                    <td>📈 TOTAL INVESTMENT</td>
+                    <td>${calculated.monthlyInvestment.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${annualInvestment.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${investPercent}%</td>
+                </tr>
+            `;
+            
+            tbody.innerHTML = html;
+        }
+        
+        function updateMonthlyTable(inputs, calculated) {
+            const tbody = document.getElementById('monthlyTable');
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            const monthlyBills = inputs.housing + inputs.insurance + inputs.education + inputs.utilities + inputs.transport + inputs.communication;
+            const monthlyVariable = inputs.food + inputs.entertainment + inputs.seasonal;
+            const monthlyInvestment = calculated.monthlyInvestment;
+            const salary = inputs.salary;
+            
+            let html = '';
+            months.forEach((month, idx) => {
+                let income = salary;
+                if (idx === 6) income += inputs.bonusJul;
+                if (idx === 10) income += inputs.bonusNov;
+                if (idx === 11) income += inputs.bonusDec;
+                
+                const balance = income - monthlyBills - monthlyVariable - monthlyInvestment;
+                const balanceClass = balance >= 0 ? 'value-positive' : 'value-negative';
+                
+                html += `
+                    <tr>
+                        <td><strong>${month.substring(0, 3)}</strong></td>
+                        <td>${income.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${monthlyBills.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${monthlyVariable.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${monthlyInvestment.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td class="${balanceClass}">${balance.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+        
+        function updatePortfolioTable(inputs, calculated) {
+            const tbody = document.getElementById('portfolioTable');
+            
+            const portfolios = [
+                { name: '💰 Emergency Fund', current: 45000, monthly: inputs.invEmergency, target: 90000, growth: 3 },
+                { name: '📊 Stock Market', current: 18000, monthly: inputs.invStock, target: 27000, growth: 10 },
+                { name: '🏢 Real Estate Fund', current: 8000, monthly: inputs.invRealEstate, target: 14000, growth: 6 },
+                { name: '🎓 Education Fund', current: 12000, monthly: inputs.invEducation, target: 16800, growth: 6 },
+                { name: '🏦 Retirement', current: 35000, monthly: inputs.invRetirement, target: 42200, growth: 7 }
+            ];
+            
+            let html = '';
+            let totalCurrent = 0;
+            let totalTarget = 0;
+            
+            portfolios.forEach(p => {
+                const endValue = p.current + (p.monthly * 12);
+                const progress = ((endValue - p.current) / (p.target - p.current) * 100).toFixed(1);
+                const progressBar = Math.min(100, Math.max(0, progress));
+                
+                totalCurrent += p.current;
+                totalTarget += p.target;
+                
+                html += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${p.current.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${p.monthly.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${p.target.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                        <td>${p.growth}%</td>
+                        <td>
+                            <div style="width: 100%; background: #e9ecef; border-radius: 4px; height: 20px; display: flex; align-items: center; position: relative;">
+                                <div style="width: ${progressBar}%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; color: white; font-size: 0.75em; font-weight: 700;">
+                                    ${Math.min(100, Math.max(0, progress)).toFixed(0)}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                <tr style="font-weight: 700; background: rgba(102, 126, 234, 0.2);">
+                    <td>📈 TOTAL PORTFOLIO</td>
+                    <td>${totalCurrent.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${(inputs.invEmergency + inputs.invStock + inputs.invRealEstate + inputs.invEducation + inputs.invRetirement).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>${totalTarget.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                    <td>6.4%</td>
+                    <td>
+                        <div style="width: 100%; background: #e9ecef; border-radius: 4px; height: 20px; display: flex; align-items: center;">
+                            <div style="width: ${(totalCurrent / totalTarget * 100).toFixed(0)}%; background: linear-gradient(90deg, #4CAF50, #45a049); border-radius: 4px; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; color: white; font-size: 0.75em; font-weight: 700;">
+                                ${(totalCurrent / totalTarget * 100).toFixed(0)}%
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            tbody.innerHTML = html;
+        }
+        
+        function updateInsights(inputs, calculated) {
+            const container = document.getElementById('insightsContainer');
+            const emergencyFundMonths = (45000 / (calculated.monthlyTotal / 1)).toFixed(1);
+            const healthScore = Math.round((1 - (calculated.expenseRatio - 80) / 20) * 100);
+            
+            document.getElementById('emergencyMonths').textContent = emergencyFundMonths + ' mo';
+            document.getElementById('savingsRate').textContent = calculated.savingsRate + '%';
+            document.getElementById('healthScore').textContent = Math.max(0, healthScore) + '%';
+            
+            let insights = '';
+            
+            if (calculated.expenseRatio > 100) {
+                insights += `
+                    <div class="insight-text warning">
+                        ⚠️ <strong>Budget Alert:</strong> You're spending ${(calculated.expenseRatio - 100).toFixed(1)}% more than your income. Consider cutting discretionary spending by 12%.
+                    </div>
+                `;
+            } else {
+                insights += `
+                    <div class="insight-text positive">
+                        ✅ <strong>Good News:</strong> Your expenses are within ${(100 - calculated.expenseRatio).toFixed(1)}% of your income!
+                    </div>
+                `;
+            }
+            
+            if (emergencyFundMonths < 3) {
+                insights += `
+                    <div class="insight-text warning">
+                        🚨 <strong>Emergency Fund Critical:</strong> You have ${emergencyFundMonths} months of expenses covered. Build to 6 months (90,000) as priority.
+                    </div>
+                `;
+            } else if (emergencyFundMonths < 6) {
+                insights += `
+                    <div class="insight-text warning">
+                        ⚠️ <strong>Build Emergency Fund:</strong> You have ${emergencyFundMonths} months covered. Target 6 months.
+                    </div>
+                `;
+            } else {
+                insights += `
+                    <div class="insight-text positive">
+                        ✅ <strong>Emergency Fund Strong:</strong> You have ${emergencyFundMonths} months of safety net!
+                    </div>
+                `;
+            }
+            
+            if (calculated.savingsRate >= 20) {
+                insights += `
+                    <div class="insight-text positive">
+                        🎉 <strong>Excellent Savings Rate:</strong> ${calculated.savingsRate}% of your income goes to investments!
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = insights;
+        }
+        
+        function updateCharts(inputs, calculated) {
+            const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+            const salaryAnnual = inputs.salary * 12;
+            const bonusTotal = inputs.bonusJul + inputs.bonusNov + inputs.bonusDec;
+            
+            if (charts.income) charts.income.chart.destroy();
+            charts.income = {
+                chart: new Chart(incomeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Salary', 'Bonuses'],
+                        datasets: [{
+                            data: [salaryAnnual, bonusTotal],
+                            backgroundColor: ['#87CEEB', '#20B2AA'],
+                            borderColor: ['#5a9fcc', '#188a7d'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                })
+            };
+            
+            const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+            
+            if (charts.expense) charts.expense.chart.destroy();
+            charts.expense = {
+                chart: new Chart(expenseCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Housing', 'Food', 'Transport', 'Utilities', 'Education', 'Other'],
+                        datasets: [{
+                            data: [
+                                inputs.housing * 12,
+                                inputs.food * 12,
+                                inputs.transport * 12,
+                                inputs.utilities * 12,
+                                inputs.education * 12,
+                                (inputs.insurance + inputs.communication + inputs.entertainment + inputs.seasonal) * 12
+                            ],
+                            backgroundColor: ['#FF6B6B', '#90EE90', '#FFD700', '#DDA0DD', '#FFB347', '#B0C4DE'],
+                            borderColor: ['#ee5a5a', '#7cd97c', '#e6c200', '#cc99cc', '#ff9500', '#9aafcc'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { size: 10 } } }
+                        }
+                    }
+                })
+            };
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const incomeData = [];
+            const expenseData = [];
+            
+            months.forEach((m, idx) => {
+                let income = inputs.salary;
+                if (idx === 6) income += inputs.bonusJul;
+                if (idx === 10) income += inputs.bonusNov;
+                if (idx === 11) income += inputs.bonusDec;
+                incomeData.push(income);
+                expenseData.push(calculated.monthlyTotal + calculated.monthlyInvestment);
+            });
+            
+            const cashFlowCtx = document.getElementById('cashFlowChart').getContext('2d');
+            if (charts.cashFlow) charts.cashFlow.chart.destroy();
+            charts.cashFlow = {
+                chart: new Chart(cashFlowCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [
+                            {
+                                label: 'Income',
+                                data: incomeData,
+                                backgroundColor: '#4CAF50',
+                                borderColor: '#45a049',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Total Outflow',
+                                data: expenseData,
+                                backgroundColor: '#FF6B6B',
+                                borderColor: '#ee5a5a',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                })
+            };
+            
+            const portfolioCtx = document.getElementById('portfolioChart').getContext('2d');
+            if (charts.portfolio) charts.portfolio.chart.destroy();
+            charts.portfolio = {
+                chart: new Chart(portfolioCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Emergency', 'Stock', 'Real Estate', 'Education', 'Retirement'],
+                        datasets: [
+                            {
+                                label: 'Current',
+                                data: [45000, 18000, 8000, 12000, 35000],
+                                backgroundColor: '#667eea',
+                                borderColor: '#5566d2',
+                                borderWidth: 1
+                            },
+                            {
+                                label: '2026 Target',
+                                data: [90000, 27000, 14000, 16800, 42200],
+                                backgroundColor: '#764ba2',
+                                borderColor: '#6a3f95',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                })
+            };
+        }
+        
+        function resetToDefaults() {
+            document.getElementById('salary').value = '15000';
+            document.getElementById('bonusJul').value = '5000';
+            document.getElementById('bonusNov').value = '3000';
+            document.getElementById('bonusDec').value = '2000';
+            document.getElementById('housing').value = '5250';
+            document.getElementById('insurance').value = '600';
+            document.getElementById('education').value = '1500';
+            document.getElementById('utilities').value = '1800';
+            document.getElementById('transport').value = '2250';
+            document.getElementById('communication').value = '300';
+            document.getElementById('food').value = '3000';
+            document.getElementById('entertainment').value = '450';
+            document.getElementById('seasonal').value = '1000';
+            document.getElementById('invEmergency').value = '1200';
+            document.getElementById('invStock').value = '800';
+            document.getElementById('invRealEstate').value = '500';
+            document.getElementById('invEducation').value = '400';
+            document.getElementById('invRetirement').value = '600';
+            
+            updateDashboard();
+        }
+        
+        window.addEventListener('load', () => {
+            updateDashboard();
+        });
+    </script>
+</body>
+</html>

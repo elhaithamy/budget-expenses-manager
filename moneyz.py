@@ -9,8 +9,8 @@ st.title("🏆 Financial Command Center (EGP)")
 st.markdown("---")
 
 # 2. ESTABLISH SECURE DATA CONNECTION
-# Paste your fresh Google Sheet URL here:
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8/edit#gid=0"
+# Paste your Google Sheet URL here:
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8/edit"
 
 # Import Streamlit's secure sheet connector
 from streamlit_gsheets import GSheetsConnection
@@ -18,8 +18,8 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=5) # Cache refreshes every 5 seconds for fast live updates
 def load_ledger_data():
-    # Reads the clean, single flat table format seamlessly
-    data = conn.read(spreadsheet=SPREADSHEET_URL, worksheet="Ledger")
+    # FIXED: Now pointing to your exact 'Transactions' tab name
+    data = conn.read(spreadsheet=SPREADSHEET_URL, worksheet="Transactions")
     data['Date'] = pd.to_datetime(data['Date'])
     data['Amount'] = pd.to_numeric(data['Amount'], errors='coerce').fillna(0.0)
     data['Month'] = data['Date'].dt.to_period('M').astype(str)
@@ -27,7 +27,7 @@ def load_ledger_data():
 
 try:
     df = load_ledger_data()
-except:
+except Exception as e:
     st.error("Please connect your Google Sheet correctly or check column naming conversions.")
     st.stop()
 
@@ -77,9 +77,9 @@ with tab_input:
                     "Is_Liquid": entry_liquid
                 }])
                 
-                # Append to current dataset matrix and save back online
+                # Append to current dataset matrix and save back online to 'Transactions'
                 updated_master = pd.concat([df.drop(columns=['Month'], errors='ignore'), new_row_df], ignore_index=True)
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Ledger", data=updated_master)
+                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=updated_master)
                 
                 st.balloons()
                 st.success("Success! Record successfully written into Google Sheets. Click Tab 2 to view updated charts.", icon="✅")

@@ -9,93 +9,131 @@ st.title("🏆 Financial Command Center (EGP)")
 st.markdown("---")
 
 # 2. ESTABLISH SECURE DATA CONNECTION
-# Paste your Google Sheet URL here:
 SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8/edit"
 
-# Import Streamlit's secure sheet connector
 from streamlit_gsheets import GSheetsConnection
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=5) # Cache refreshes every 5 seconds for fast live updates
-def load_ledger_data():
-    # FIXED: Now pointing to your exact 'Transactions' tab name
-    data = conn.read(spreadsheet=SPREADSHEET_URL, worksheet="Transactions")
-    data['Date'] = pd.to_datetime(data['Date'])
-    data['Amount'] = pd.to_numeric(data['Amount'], errors='coerce').fillna(0.0)
-    data['Month'] = data['Date'].dt.to_period('M').astype(str)
-    return data
+def clean_numeric(val):
+    if pd.isna(val) or str(val).strip() == "": return 0.0
+    val_cleaned = str(val).replace('£', '').replace('$', '').replace(',', '').strip()
+    try: return float(val_cleaned)
+    except: return 0.0
+
+@st.cache_data(ttl=5)
+def load_side_by_side_data():
+    # Read raw sheet without a header to parse indices manually
+    raw_df = conn.read(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", header=None)
+    
+    # Process Expenses (Rows 3+ because Row 1 is Title and Row 2 is Subheaders)
+    exp_raw = raw_df.iloc[2:, [0, 1, 2, 3]].dropna(subset=[raw_df.columns[1]])
+    exp_raw.columns = ['Date', 'Amount', 'Description', 'Category']
+    exp_raw['Amount'] = exp_raw['Amount'].apply(clean_numeric)
+    exp_raw['Type'] = 'Expense'
+    exp_raw['Is_Liquid'] = True
+    exp_raw['Date'] = pd.to_datetime(exp_raw['Date'], errors='coerce')
+    
+    # Process Income (Rows 3+ / Columns F-I are positional indices 5, 6, 7, 8)
+    inc_raw = raw_df.iloc[2:, [5, 6, 7, 8]].dropna(subset=[raw_df.columns[6]])
+    inc_raw.columns = ['Date', 'Amount', 'Description', 'Category']
+    inc_raw['Amount'] = inc_raw['Amount'].apply(clean_numeric)
+    inc_raw['Type'] = 'Income'
+    
+    # Built-in automatic sorting rules to protect illiquid assets
+    def check_liquidity(row):
+        desc = str(row['Description']).lower()
+        cat = str(row['Category']).lower()
+        if 'side project' in desc or 'other' in cat or row['Amount'] in [150500.0, 78000.0]:
+            return False
+        return True
+    inc_raw['Is_Liquid'] = inc_raw.apply(check_liquidity, axis=1)
+    inc_raw['Date'] = pd.to_datetime(inc_raw['Date'], errors='coerce')
+    
+    # Merge for backend calculations
+    combined = pd.concat([exp_raw, inc_raw], ignore_index=True).dropna(subset=['Date'])
+    combined['Month'] = combined['Date'].dt.to_period('M').astype(str)
+    return combined, raw_df
 
 try:
-    df = load_ledger_data()
+    df, raw_spreadsheet = load_side_by_side_data()
 except Exception as e:
-    st.error("Please connect your Google Sheet correctly or check column naming conversions.")
+    st.error("Connection sync mismatch. Verify that your columns match the 'Transactions' format precisely.")
     st.stop()
 
-# 3. SPLIT APPLICATION INTO TWO CLEAN FUNCTIONAL TABS
-tab_input, tab_visuals = st.tabs(["📥 Tab 1: Live Data Entry Form", "📊 Tab 2: Visual Charts & Analytics"])
+# 3. APP NAVIGATION SYSTEM
+tab_input, tab_visuals = st.tabs(["📥 Tab 1: Live Data Entry", "📊 Tab 2: Visual Analytics"])
 
 # =========================================================
-# TAB 1: DATA ENTRY FORMS (BLUE & GREEN DESIGN FOCUS)
+# TAB 1: DATA ENTRY FORMS
 # =========================================================
 with tab_input:
-    st.markdown("<h3 style='color: #3498db;'>📝 Append New Row Straight to Google Sheets</h3>", unsafe_allow_html=True)
-    st.markdown("Fill out the transaction below. Submitting will instantly write this record into your online spreadsheet database.")
+    st.markdown("<h3 style='color: #3498db;'>📝 Add Transaction Live</h3>", unsafe_allow_html=True)
     
-    # Single unified layout form
-    with st.form("database_form", clear_on_submit=True):
+    with st.form("dynamic_entry_form", clear_on_submit=True):
         col_f1, col_f2, col_f3 = st.columns(3)
         
         with col_f1:
-            entry_date = st.date_input("Transaction Calendar Date", datetime.now().date())
-            entry_type = st.selectbox("Flow Classification (Type)", ["Expense", "Income"])
-            
+            entry_date = st.date_input("Transaction Date", datetime.now().date())
+            entry_type = st.selectbox("Transaction Type", ["Expense", "Income"])
         with col_f2:
-            entry_amount = st.number_input("Numerical Amount (EGP)", min_value=0.0, step=100.0)
-            entry_desc = st.text_input("Context / Vendor Description", placeholder="e.g., Cairo Rent Payment")
-            
+            entry_amount = st.number_input("Amount (EGP)", min_value=0.0, step=500.0)
+            entry_desc = st.text_input("Description Context", placeholder="e.g., Grocery Outlay")
         with col_f3:
-            # Combined available categories dropdown picker
-            entry_cat = st.selectbox("Budget Assignment Category", [
+            entry_cat = st.selectbox("Category Grouping", [
                 'Food', 'Allowance', 'Medication/Health', 'Mother', 'Gas', 
                 'BabySitter', 'Nurse', 'Physical Therapy', 'Rent', 'Rent 2', 
                 'Credit Card', 'Paycheck', 'Savings', 'Other'
             ])
-            entry_liquid = st.checkbox("Is Cash Liquid / Accessible?", value=True)
             
-        # Form submission trigger button
-        save_trigger = st.form_submit_button("🔒 Securely Save Row to Google Sheet")
+        save_trigger = st.form_submit_button("🔒 Save Entry to Google Sheet")
         
-        if save_trigger:
-            if entry_amount > 0:
-                # Structure the input to match your exact sheet columns
-                new_row_df = pd.DataFrame([{
-                    "Date": entry_date.strftime("%Y-%m-%d"),
-                    "Amount": entry_amount,
-                    "Description": entry_desc,
-                    "Category": entry_cat,
-                    "Type": entry_type,
-                    "Is_Liquid": entry_liquid
-                }])
+        if save_trigger and entry_amount > 0:
+            # Create a working copy of the master spreadsheet to manipulate cell blocks
+            updated_sheet = raw_spreadsheet.copy()
+            
+            if entry_type == "Expense":
+                # Scan column B (index 1) starting at row index 2 to find the next empty slot
+                next_exp_idx = 2
+                while next_exp_idx < len(updated_sheet) and pd.notna(updated_sheet.iloc[next_exp_idx, 1]) and str(updated_sheet.iloc[next_exp_idx, 1]).strip() != "":
+                    next_exp_idx += 1
                 
-                # Append to current dataset matrix and save back online to 'Transactions'
-                updated_master = pd.concat([df.drop(columns=['Month'], errors='ignore'), new_row_df], ignore_index=True)
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=updated_master)
+                # Append blank padding row if existing matrix boundary is reached
+                if next_exp_idx == len(updated_sheet):
+                    updated_sheet.loc[len(updated_sheet)] = [None] * len(updated_sheet.columns)
+                    
+                updated_sheet.iloc[next_exp_idx, 0] = entry_date.strftime("%m/%d/%Y")
+                updated_sheet.iloc[next_exp_idx, 1] = entry_amount
+                updated_sheet.iloc[next_exp_idx, 2] = entry_desc
+                updated_sheet.iloc[next_exp_idx, 3] = entry_cat
                 
-                st.balloons()
-                st.success("Success! Record successfully written into Google Sheets. Click Tab 2 to view updated charts.", icon="✅")
-                st.cache_data.clear() # Clear memory to force data reload
-            else:
-                st.warning("Please specify an amount higher than 0 EGP to file a ledger entry.")
+            else: # Income Type Processing
+                # Scan column G (index 6) starting at row index 2 to find the next empty slot
+                next_inc_idx = 2
+                while next_inc_idx < len(updated_sheet) and pd.notna(updated_sheet.iloc[next_inc_idx, 6]) and str(updated_sheet.iloc[next_inc_idx, 6]).strip() != "":
+                    next_inc_idx += 1
+                    
+                if next_inc_idx == len(updated_sheet):
+                    updated_sheet.loc[len(updated_sheet)] = [None] * len(updated_sheet.columns)
+                    
+                updated_sheet.iloc[next_inc_idx, 5] = entry_date.strftime("%m/%d/%Y")
+                updated_sheet.iloc[next_inc_idx, 6] = entry_amount
+                updated_sheet.iloc[next_inc_idx, 7] = entry_desc
+                updated_sheet.iloc[next_inc_idx, 8] = entry_cat
+
+            # Push the updated side-by-side array back to Google Sheets
+            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=updated_sheet, header=False)
+            st.balloons()
+            st.success("Successfully compiled and saved to your spreadsheet layout! Head to Tab 2 to review changes.")
+            st.cache_data.clear()
 
     st.markdown("---")
-    st.markdown("**Current Live Database Spreadsheet Log view:**")
-    st.dataframe(df[["Date", "Type", "Category", "Amount", "Description", "Is_Liquid"]], use_container_width=True)
+    st.markdown("### 📋 Previewing Your Live Side-by-Side Database")
+    st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)
 
 # =========================================================
-# TAB 2: VISUAL CHARTS (RED & YELLOW SPENT FOCUS)
+# TAB 2: VISUAL ANALYTICS (RED & YELLOW SPENT THEME)
 # =========================================================
 with tab_visuals:
-    # RUN CALCULATIONS PIPELINE FOR MULTI-MONTH ROLLOVERS
     unique_months = sorted(df['Month'].unique())
     rolling_balance = 0.0
     monthly_aggregates = {}
@@ -121,14 +159,13 @@ with tab_visuals:
 
     history_df = pd.DataFrame(historical_trends)
 
-    # Sidebar Filter Module for Visuals View panel
     st.sidebar.markdown("---")
     selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1 if unique_months else 0)
     
     if not history_df.empty and selected_month in monthly_aggregates:
         metrics = monthly_aggregates[selected_month]
         
-        # Numeric Scorecards KPIs row
+        # Financial Cards Display row
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🎬 Start Pool Balance", f"{metrics['Start']:,.2f} EGP")
         m2.metric("📥 Liquid Inflow (Green/Blue)", f"{metrics['Income']:,.2f} EGP")
@@ -137,11 +174,11 @@ with tab_visuals:
         
         st.markdown("---")
         
-        # Interactive Visual Dashboard Panel Row
+        # Financial Graph Rows
         c_left, c_right = st.columns(2)
         
         with c_left:
-            st.markdown("**Income vs Expenses Baseline (Bar Chart - Green/Red Scheme)**")
+            st.markdown("**Income vs Expenses Baseline (Bar Chart - Green/Red Map)**")
             bar_melt = history_df.melt(id_vars=["Month"], value_vars=["Total Income", "Total Expenses"], var_name="Type", value_name="EGP")
             fig_bar = px.bar(bar_melt, x="Month", y="EGP", color="Type", barmode="group",
                              color_discrete_map={"Total Income": "#2ecc71", "Total Expenses": "#e74c3c"})
@@ -155,14 +192,14 @@ with tab_visuals:
             
         st.markdown("---")
         
-        # Row 2: Expense Proportions Weight distribution map
+        # Category Expense Pie Chart Section
         st.markdown(f"### 🔍 Spent Category Structural Breakdown for {selected_month}")
         exp_filter = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')]
         
         if not exp_filter.empty:
-            # Custom assigned hot warning hex variations sequence matching requirements exactly
+            # Custom sequential sequence composed of exact Red and Yellow hot warning color variations
             spent_colors = ['#e74c3c', '#f1c40f', '#e67e22', '#f39c12', '#d35400', '#f5b041', '#f8c471']
             fig_pie = px.pie(exp_filter, values="Amount", names="Category", hole=0.4, color_discrete_sequence=spent_colors)
             st.plotly_chart(fig_pie, use_container_width=True)
         else:
-            st.info("No expense entries logged yet for this selected calendar month branch.")
+            st.info("No expense entries logged for this selected month branch.")

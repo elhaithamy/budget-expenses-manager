@@ -3,3 +3,7 @@ pandas
 plotly
 gspread
 google-auth
+streamlit
+pandas
+plotly
+st-gsheets-connection

@@ -1,4 +1,3 @@
-%%writefile app.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -25,7 +24,6 @@ def clean_numeric(val):
 
 @st.cache_data(ttl=2)
 def load_side_by_side_data():
-    # Read the sheet flat with no assumptions to capture exact row coordinates
     raw_df = pd.read_csv(csv_url, header=None)
     
     # Process Expenses (Columns A-D, from row 3 onwards)
@@ -66,7 +64,6 @@ try:
     df, raw_spreadsheet = load_side_by_side_data()
 except Exception as e:
     st.error(f"❌ True Connection Error Details: {e}")
-    st.info("If you see an 'IndexError', it means your Google Sheet doesn't have columns out to column I. Add a few empty placeholder columns up to Column J inside your spreadsheet to fix it.")
     st.stop()
 
 # 3. APP NAVIGATION SYSTEM
@@ -125,7 +122,6 @@ with tab_input:
                 updated_sheet.iloc[next_inc_idx, 7] = entry_desc
                 updated_sheet.iloc[next_inc_idx, 8] = entry_cat
 
-            # Use header=False so that row 1 and row 2 values are kept completely undisturbed
             conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=updated_sheet, header=False)
             st.balloons()
             st.success("Successfully compiled and saved to your spreadsheet layout!")
@@ -165,9 +161,8 @@ with tab_visuals:
     history_df = pd.DataFrame(historical_trends)
 
     st.sidebar.markdown("---")
-    selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1 if unique_months else 0)
-    
-    if not history_df.empty and selected_month in monthly_aggregates:
+    if unique_months:
+        selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1)
         metrics = monthly_aggregates[selected_month]
         
         m1, m2, m3, m4 = st.columns(4)

@@ -25,7 +25,7 @@ PLANNED_BUDGETS = {
 }
 TOTAL_MONTHLY_PLANNED_EXPENSE = sum(PLANNED_BUDGETS.values())
 
-# 🔄 SYSTEM CONTROLS: FORCED ANTI-CACHE RESET BUTTON
+# SYSTEM CONTROLS: FORCED ANTI-CACHE RESET BUTTON
 st.sidebar.markdown("## ⚙️ Data Control Center")
 if st.sidebar.button("🔄 Sync & Force Refresh", use_container_width=True):
     st.cache_data.clear()
@@ -35,18 +35,16 @@ if st.sidebar.button("🔄 Sync & Force Refresh", use_container_width=True):
 
 def clean_numeric(val):
     if pd.isna(val) or str(val).strip() == "": return 0.0
-    # Strip spaces, symbols, and trailing alphanumeric currency labels safely
     val_cleaned = str(val).replace('£', '').replace('$', '').replace(',', '').replace('EGP', '').strip()
     try: return float(val_cleaned)
     except: return 0.0
 
-@st.cache_data(ttl=0) # Explicitly set local memory cache lifespan to zero
+@st.cache_data(ttl=0) 
 def load_side_by_side_data():
-    # CACHE BUSTER RULE: Generate a fresh epoch unique ID string on every execution
     cache_buster = int(time.time())
     live_csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions&cb={cache_buster}"
     
-    # Force pandas to read raw lines strictly as generic string layouts
+    # Force reading raw data as strings to prevent automatic format dropping
     raw_df = pd.read_csv(live_csv_url, header=None, dtype=str)
     
     # Process Expenses (Columns A-D)
@@ -56,7 +54,10 @@ def load_side_by_side_data():
     exp_raw = exp_raw[exp_raw['Amount'] > 0]
     exp_raw['Type'] = 'Expense'
     exp_raw['Is_Liquid'] = True
-    exp_raw['Date'] = pd.to_datetime(exp_raw['Date'], errors='coerce')
+    
+    # UPGRADED: Fallback date parsing handles mixed layouts without discarding values
+    exp_raw['Date'] = pd.to_datetime(exp_raw['Date'], format='mixed', errors='coerce')
+    exp_raw['Date'] = exp_raw['Date'].fillna(datetime.now()) # Keep row visible even if date format is weird
     
     # Process Income (Columns F-I)
     inc_raw = raw_df.iloc[2:, [5, 6, 7, 8]].copy()
@@ -77,9 +78,10 @@ def load_side_by_side_data():
     else:
         inc_raw['Is_Liquid'] = True
         
-    inc_raw['Date'] = pd.to_datetime(inc_raw['Date'], errors='coerce')
+    inc_raw['Date'] = pd.to_datetime(inc_raw['Date'], format='mixed', errors='coerce')
+    inc_raw['Date'] = inc_raw['Date'].fillna(datetime.now())
     
-    combined = pd.concat([exp_raw, inc_raw], ignore_index=True).dropna(subset=['Date'])
+    combined = pd.concat([exp_raw, inc_raw], ignore_index=True)
     combined['Month'] = combined['Date'].dt.to_period('M').astype(str)
     return combined, raw_df
 
@@ -126,22 +128,34 @@ with tab_input:
                 st.error(f"Network link failure: {api_err}")
 
     st.markdown("---")
-    st.markdown("### 📋 Previewing Your Live Side-by-Side Database")
-    st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)
+    
+    # 🔍 THE SYSTEM DEBUGGER EXPANDER (Let's pinpoint why it's reading zero)
+    with st.expander("🔍 🛠️ Live Sheet Diagnostics Panel (Click to Open)"):
+        st.write(f"**Total raw rows imported from Google Sheets:** {len(raw_spreadsheet)}")
+        st.write(f"**Total active transactions successfully parsed by Python:** {len(df)}")
+        st.markdown("**First 10 lines of raw text pulled directly from your Google Sheet:**")
+        st.dataframe(raw_spreadsheet.head(10))
+        st.markdown("**Python compiled transaction database:**")
+        st.dataframe(df)
 
 # =========================================================
 # TAB 2: CEILING PERFORMANCE VISUALS
 # =========================================================
 with tab_visuals:
-    unique_months = sorted(df['Month'].unique())
+    unique_months = sorted(df['Month'].unique()) if not df.empty else [datetime.now().strftime('%Y-%m')]
     rolling_balance = 0.0
     monthly_aggregates = {}
     historical_trends = []
 
     for m in unique_months:
-        m_df = df[df['Month'] == m]
-        liquid_inflow = m_df[(m_df['Type'] == 'Income') & (m_df['Is_Liquid'] == True)]['Amount'].sum()
-        total_outflow = m_df[m_df['Type'] == 'Expense']['Amount'].sum()
+        m_df = df[df['Month'] == m] if not df.empty else pd.DataFrame()
+        
+        if not m_df.empty:
+            liquid_inflow = m_df[(m_df['Type'] == 'Income') & (m_df['Is_Liquid'] == True)]['Amount'].sum()
+            total_outflow = m_df[m_df['Type'] == 'Expense']['Amount'].sum()
+        else:
+            liquid_inflow, total_outflow = 0.0, 0.0
+            
         start_bal = rolling_balance
         net_savings = liquid_inflow - total_outflow
         end_bal = start_bal + net_savings
@@ -153,14 +167,15 @@ with tab_visuals:
     history_df = pd.DataFrame(historical_trends)
 
     st.sidebar.markdown("---")
-    selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1 if unique_months else 0)
+    selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1)
     
-    if selected_month:
+    if selected_month in monthly_aggregates:
         metrics = monthly_aggregates[selected_month]
-        month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy()
+        month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy() if not df.empty else pd.DataFrame(columns=['Category', 'Amount', 'Date'])
         
-        # FOOLPROOF ROBUST EXTRACTOR: Convert keys to lowercase to fix space/capital mismatches
-        actual_cat_spending = {str(k).strip().lower(): v for k, v in month_exp.groupby('Category')['Amount'].sum().to_dict().items()}
+        actual_cat_spending = {}
+        if not month_exp.empty:
+            actual_cat_spending = {str(k).strip().lower(): v for k, v in month_exp.groupby('Category')['Amount'].sum().to_dict().items()}
         
         performance_records = []
         breached_categories = []
@@ -211,7 +226,6 @@ with tab_visuals:
         
         # 📊 UNIFIED 100% CEILING PERFORMANCE BAR CHART
         st.subheader("📊 Category Cap Consumed Progress Map")
-        st.markdown("Every bar shows your total usage percentage. If any bar crosses the red dotted line at **100%**, it is over budget.")
         
         fig_clean_bars = px.bar(
             perf_df,
@@ -234,24 +248,5 @@ with tab_visuals:
         st.plotly_chart(fig_clean_bars, use_container_width=True, key="unified_performance_bar_chart")
 
         st.markdown("---")
-        
-        # Performance Data Grid logs
         st.subheader("📋 Structural Financial Performance Ledger")
         st.dataframe(perf_df[["Budget Category", "Planned Cap (EGP)", "Actual Spent (EGP)", "Remaining Available (EGP)", "Budget Consumed %", "Status"]], use_container_width=True)
-
-        st.markdown("---")
-        
-        # Daily Run-rate pacing trend line plot
-        st.subheader("📉 Daily Cash Outflow Burn-Rate Velocity")
-        month_exp['Day'] = month_exp['Date'].dt.day
-        daily_timeline = pd.DataFrame({'Day': range(1, 31)})
-        daily_sums = month_exp.groupby('Day')['Amount'].sum().reset_index()
-        daily_timeline = pd.merge(daily_timeline, daily_sums, on='Day', how='left').fillna(0.0)
-        daily_timeline['Actual Cumulative Spend'] = daily_timeline['Amount'].cumsum()
-        daily_timeline['Target Ceiling Slope'] = (TOTAL_MONTHLY_PLANNED_EXPENSE / 30.0) * daily_timeline['Day']
-        
-        fig_pacing = go.Figure()
-        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Target Ceiling Slope'], name="Ideal Month Slope Target (Yellow)", line=dict(color='#f1c40f', width=2, dash='dash')))
-        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Actual Cumulative Spend'], name="Real Cumulative Spending (Blue)", line=dict(color='#3498db', width=4)))
-        fig_pacing.update_layout(xaxis_title="Day of Month Timeline", yaxis_title="Total EGP Outflow Pool")
-        st.plotly_chart(fig_pacing, use_container_width=True, key="daily_burnrate_pacing_trend")

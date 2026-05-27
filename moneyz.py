@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
 from datetime import datetime
 
 # 1. LIVE PAGE SETTINGS
 st.set_page_config(page_title="EGP Wealth Hub", layout="wide")
-st.title("🏆 Financial Command Center (EGP)")
+st.title("🏆 Advanced Financial Command Center (EGP)")
 st.markdown("---")
 
 # 2. ESTABLISH SECURE DATA CONNECTIONS
@@ -14,7 +15,16 @@ SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
 csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
 
 # PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BETWEEN THE QUOTES BELOW:
-WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzJwFoRsR4GBBctlWQlTvwpeQM6sG1Kd-71KoMUe7uDiTKKGjtLLMnqPWO1fKC1FWIPWQ/exec"
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzM6M7UvD-A5333gqL1yZ6YgD8hZ5lq_1g_Example/exec"
+
+# Hardcoded Baseline Target Ceilings from your master planning schema
+PLANNED_BUDGETS = {
+    'Food': 15000.0, 'Allowance': 4000.0, 'Medication/Health': 3500.0,
+    'Mother': 4000.0, 'Gas': 1500.0, 'BabySitter': 11000.0, 'Nurse': 1000.0,
+    'Physical Therapy': 7200.0, 'Rent': 14200.0, 'Rent 2': 1500.0, 'Credit Card': 10000.0
+}
+TOTAL_MONTHLY_PLANNED_EXPENSE = sum(PLANNED_BUDGETS.values())
+
 def clean_numeric(val):
     if pd.isna(val) or str(val).strip() == "": return 0.0
     val_cleaned = str(val).replace('£', '').replace('$', '').replace(',', '').strip()
@@ -25,7 +35,7 @@ def clean_numeric(val):
 def load_side_by_side_data():
     raw_df = pd.read_csv(csv_url, header=None)
     
-    # Process Expenses (Columns A-D, from row 3 onwards)
+    # Process Expenses (Columns A-D)
     exp_raw = raw_df.iloc[2:, [0, 1, 2, 3]].copy()
     exp_raw.columns = ['Date', 'Amount', 'Description', 'Category']
     exp_raw['Amount'] = exp_raw['Amount'].apply(clean_numeric)
@@ -34,7 +44,7 @@ def load_side_by_side_data():
     exp_raw['Is_Liquid'] = True
     exp_raw['Date'] = pd.to_datetime(exp_raw['Date'], errors='coerce')
     
-    # Process Income (Columns F-I / Indices 5-8, from row 3 onwards)
+    # Process Income (Columns F-I)
     inc_raw = raw_df.iloc[2:, [5, 6, 7, 8]].copy()
     inc_raw.columns = ['Date', 'Amount', 'Description', 'Category']
     inc_raw['Amount'] = inc_raw['Amount'].apply(clean_numeric)
@@ -62,64 +72,71 @@ def load_side_by_side_data():
 try:
     df, raw_spreadsheet = load_side_by_side_data()
 except Exception as e:
-    st.error(f"❌ True Connection Error Details: {e}")
+    st.error(f"❌ Connection Sync Error: {e}")
     st.stop()
 
-# 3. APP NAVIGATION SYSTEM
-tab_input, tab_visuals = st.tabs(["📥 Tab 1: Live Data Entry", "📊 Tab 2: Visual Analytics"])
+# 3. APP NAVIGATION TABS
+tab_input, tab_visuals = st.tabs(["📥 Tab 1: Live Data Entry & History Control", "📊 Tab 2: Visual Ceiling Analytics"])
 
 # =========================================================
-# TAB 1: DATA ENTRY FORMS
+# TAB 1: DATA ENTRY FORMS & UNDO HISTORY ENGINE
 # =========================================================
 with tab_input:
-    st.markdown("<h3 style='color: #3498db;'>📝 Add Transaction Live</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #3498db;'>📝 Append Row Settings</h3>", unsafe_allow_html=True)
     
     with st.form("dynamic_entry_form", clear_on_submit=True):
         col_f1, col_f2, col_f3 = st.columns(3)
-        
         with col_f1:
             entry_date = st.date_input("Transaction Date", datetime.now().date())
             entry_type = st.selectbox("Transaction Type", ["Expense", "Income"])
         with col_f2:
             entry_amount = st.number_input("Amount (EGP)", min_value=0.0, step=500.0)
-            entry_desc = st.text_input("Description Context", placeholder="e.g., Grocery Outlay")
+            entry_desc = st.text_input("Description Context", placeholder="e.g., Carrefour Basket")
         with col_f3:
-            entry_cat = st.selectbox("Category Grouping", [
-                'Food', 'Allowance', 'Medication/Health', 'Mother', 'Gas', 
-                'BabySitter', 'Nurse', 'Physical Therapy', 'Rent', 'Rent 2', 
-                'Credit Card', 'Paycheck', 'Savings', 'Other'
-            ])
+            entry_cat = st.selectbox("Category Grouping", list(PLANNED_BUDGETS.keys()) + ['Paycheck', 'Savings', 'Other'])
             
         save_trigger = st.form_submit_button("🔒 Save Entry to Google Sheet")
         
         if save_trigger and entry_amount > 0:
-            # Package form variables into a clean JSON transmission packet
-            payload = {
-                "date": entry_date.strftime("%m/%d/%Y"),
-                "amount": entry_amount,
-                "description": entry_desc,
-                "category": entry_cat,
-                "type": entry_type
-            }
-            
+            payload = {"date": entry_date.strftime("%m/%d/%Y"), "amount": entry_amount, "description": entry_desc, "category": entry_cat, "type": entry_type}
             try:
-                # Fire data package straight to the Google Gateway Script
                 response = requests.post(WEBAPP_URL, json=payload)
                 if response.status_code == 200:
-                    st.balloons()
-                    st.success("Successfully saved to your Google Spreadsheet layout!")
-                    st.cache_data.clear() # Wipe memory cache to force an instant graph update
-                else:
-                    st.error(f"Gateway rejected transaction. Status: {response.status_code}")
+                    st.toast("Record appended successfully!", icon="✅")
+                    st.cache_data.clear()
+                    st.rerun()
             except Exception as api_err:
-                st.error(f"Failed to communicate with Google Sheets. Verify Web App URL: {api_err}")
+                st.error(f"Network error link failure: {api_err}")
+
+    # NEW: HISTORICAL ACTION MODERATION CONTROLS (UNDO SYSTEM)
+    st.markdown("---")
+    st.markdown("<h3 style='color: #e67e22;'>⏪ Transaction History Undo Vault</h3>", unsafe_allow_html=True)
+    st.caption("Made a mistake typing your logs? Use these dynamic triggers to extract and delete the last saved rows instantly.")
+    
+    col_del_1, col_del_2 = st.columns(2)
+    with col_del_1:
+        if st.button("🗑️ Remove Last Entered Expense Row", use_container_width=True):
+            try:
+                del_res = requests.post(WEBAPP_URL, json={"action": "delete_last", "type": "Expense"})
+                st.warning(f"Server Response: {del_res.text}")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e: st.error(f"Error: {e}")
+            
+    with col_del_2:
+        if st.button("🗑️ Remove Last Entered Income Row", use_container_width=True):
+            try:
+                del_res = requests.post(WEBAPP_URL, json={"action": "delete_last", "type": "Income"})
+                st.warning(f"Server Response: {del_res.text}")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e: st.error(f"Error: {e}")
 
     st.markdown("---")
-    st.markdown("### 📋 Previewing Your Live Side-by-Side Database")
     st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)
 
 # =========================================================
-# TAB 2: VISUAL ANALYTICS
+# TAB 2: ADVANCED VISUAL CEILING ANALYTICS
 # =========================================================
 with tab_visuals:
     unique_months = sorted(df['Month'].unique())
@@ -129,29 +146,25 @@ with tab_visuals:
 
     for m in unique_months:
         m_df = df[df['Month'] == m]
-        
         liquid_inflow = m_df[(m_df['Type'] == 'Income') & (m_df['Is_Liquid'] == True)]['Amount'].sum()
         total_outflow = m_df[m_df['Type'] == 'Expense']['Amount'].sum()
-        
         start_bal = rolling_balance
         net_savings = liquid_inflow - total_outflow
         end_bal = start_bal + net_savings
         
-        monthly_aggregates[m] = {
-            "Start": start_bal, "Income": liquid_inflow, "Expenses": total_outflow, "End": end_bal
-        }
-        historical_trends.append({
-            "Month": m, "Accumulated Cash Savings": end_bal, "Total Income": liquid_inflow, "Total Expenses": total_outflow
-        })
+        monthly_aggregates[m] = {"Start": start_bal, "Income": liquid_inflow, "Expenses": total_outflow, "End": end_bal}
+        historical_trends.append({"Month": m, "Accumulated Cash Savings": end_bal, "Total Income": liquid_inflow, "Total Expenses": total_outflow})
         rolling_balance = end_bal
 
     history_df = pd.DataFrame(historical_trends)
 
     st.sidebar.markdown("---")
-    if unique_months:
-        selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1)
+    selected_month = st.sidebar.selectbox("Filter Chart Month View", unique_months, index=len(unique_months)-1 if unique_months else 0)
+    
+    if selected_month:
         metrics = monthly_aggregates[selected_month]
         
+        # Core Metrics Display
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🎬 Start Pool Balance", f"{metrics['Start']:,.2f} EGP")
         m2.metric("📥 Liquid Inflow (Green/Blue)", f"{metrics['Income']:,.2f} EGP")
@@ -160,28 +173,66 @@ with tab_visuals:
         
         st.markdown("---")
         
-        c_left, c_right = st.columns(2)
-        with c_left:
-            st.markdown("**Income vs Expenses Baseline (Bar Chart)**")
-            bar_melt = history_df.melt(id_vars=["Month"], value_vars=["Total Income", "Total Expenses"], var_name="Type", value_name="EGP")
-            fig_bar = px.bar(bar_melt, x="Month", y="EGP", color="Type", barmode="group",
-                             color_discrete_map={"Total Income": "#2ecc71", "Total Expenses": "#e74c3c"})
-            st.plotly_chart(fig_bar, use_container_width=True)
-            
-        with c_right:
-            st.markdown("**Long-Term Cumulative Savings Track (Lean Line Chart)**")
-            fig_line = px.line(history_df, x="Month", y="Accumulated Cash Savings", markers=True, color_discrete_sequence=["#3498db"])
-            fig_line.update_traces(line_width=4, marker_size=10)
-            st.plotly_chart(fig_line, use_container_width=True)
-            
+        # ADVANCED VISUALIZATION 1: BURNRATE PACING CHART (DAILY / WEEKLY PACING)
+        st.subheader("📉 Micro Spending Velocity & Burn-Rate Pacing")
+        st.markdown("This line tracks your actual cumulative spending over days of the month vs an ideal linear run-rate ceiling line.")
+        
+        month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy()
+        month_exp['Day'] = month_exp['Date'].dt.day
+        
+        # Compile a daily timeline dataframe mapping rows from Day 1 up to Day 30
+        daily_timeline = pd.DataFrame({'Day': range(1, 31)})
+        daily_sums = month_exp.groupby('Day')['Amount'].sum().reset_index()
+        daily_timeline = pd.merge(daily_timeline, daily_sums, on='Day', how='left').fillna(0.0)
+        daily_timeline['Actual Cumulative Spend'] = daily_timeline['Amount'].cumsum()
+        
+        # Build standard linear idealized slope distribution vector
+        daily_timeline['Target Ceiling Slope'] = (TOTAL_MONTHLY_PLANNED_EXPENSE / 30.0) * daily_timeline['Day']
+        
+        fig_pacing = go.Figure()
+        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Target Ceiling Slope'], name="Ideal Burn Rate Slope (Yellow)", line=dict(color='#f1c40f', width=2, dash='dash')))
+        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Actual Cumulative Spend'], name="Your Realized Outflow Velocity (Blue)", line=dict(color='#3498db', width=4)))
+        fig_pacing.update_layout(xaxis_title="Day of Month Timeline", yaxis_title="EGP Value Outflow Pool", legend=dict(x=0.01, y=0.99))
+        st.plotly_chart(fig_pacing, use_container_width=True)
+        
         st.markdown("---")
         
-        st.markdown(f"### 🔍 Spent Category Structural Breakdown for {selected_month}")
-        exp_filter = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')]
+        # ADVANCED VISUALIZATION 2: RE-ENGINEERED CATEGORY CEILING METERS
+        st.subheader("🚨 Category Expense Cap Alert Threshold Matrix")
+        st.markdown("These progressive tracking meters monitor exactly how close individual variable buckets are to exceeding their planned caps.")
         
-        if not exp_filter.empty:
-            spent_colors = ['#e74c3c', '#f1c40f', '#e67e22', '#f39c12', '#d35400', '#f5b041', '#f8c471']
-            fig_pie = px.pie(exp_filter, values="Amount", names="Category", hole=0.4, color_discrete_sequence=spent_colors)
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("No expense entries logged for this selected month.")
+        cat_cols_1, cat_cols_2 = st.columns(2)
+        
+        # Calculate individual expenditure weights per structural category assignments
+        actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
+        
+        for idx, (category, planned_cap) in enumerate(PLANNED_BUDGETS.items()):
+            actual_spent = actual_cat_spending.get(category, 0.0)
+            pct_consumed = (actual_spent / planned_cap) if planned_cap > 0 else 0.0
+            
+            # Select alerting color context indicators based on consumption parameters
+            if pct_consumed >= 1.0: color_hex = "#e74c3c" # Crimson Red (Exceeded)
+            elif pct_consumed >= 0.85: color_hex = "#f39c12" # Vivid Amber Yellow (Warning Boundary)
+            else: color_hex = "#2ecc71" # Safe Emerald Green
+            
+            target_column = cat_cols_1 if idx % 2 == 0 else cat_cols_2
+            
+            with target_column:
+                st.markdown(f"**{category}** (Limit: {planned_cap:,.0f} EGP)")
+                # Render interactive plot progress bar parameters explicitly
+                fig_progress = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = actual_spent,
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    gauge = {
+                        'axis': {'range': [None, planned_cap * 1.2]},
+                        'bar': {'color': color_hex},
+                        'threshold': {
+                            'line': {'color': "red", 'width': 3},
+                            'thickness': 0.75,
+                            'value': planned_cap
+                        }
+                    }
+                ))
+                fig_progress.update_layout(height=140, margin=dict(l=20, r=20, t=20, b=20))
+                st.plotly_chart(fig_progress, use_container_width=True)

@@ -14,8 +14,8 @@ st.markdown("---")
 SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
 csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
 
-# PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BETWEEN THE QUOTES BELOW:
-WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzM6M7UvD-A5333gqL1yZ6YgD8hZ5lq_1g_Example/exec"
+# ⚠️ CRITICAL ACTION: Paste your Google Web App URL ending in /exec below:
+WEBAPP_URL = "REPLACE_WITH_YOUR_COPIED_APPS_SCRIPT_URL"
 
 # Hardcoded Baseline Target Ceilings from your master planning schema
 PLANNED_BUDGETS = {
@@ -101,35 +101,46 @@ with tab_input:
             payload = {"date": entry_date.strftime("%m/%d/%Y"), "amount": entry_amount, "description": entry_desc, "category": entry_cat, "type": entry_type}
             try:
                 response = requests.post(WEBAPP_URL, json=payload)
-                if response.status_code == 200:
-                    st.toast("Record appended successfully!", icon="✅")
+                # FIXED: Force application to read internal Google execution string responses
+                if response.status_code == 200 and "Success" in response.text:
+                    st.balloons()
+                    st.success("Record appended successfully!")
                     st.cache_data.clear()
                     st.rerun()
+                else:
+                    st.error("⚠️ Silent Google Authorization Failure!")
+                    st.markdown(f"**Google returned this text instead of saving:** {response.text[:500]}")
+                    st.info("💡 Solution: Go to Google Sheet -> Apps Script -> Deploy -> New Deployment. Set 'Who has access' to ANYONE.")
             except Exception as api_err:
-                st.error(f"Network error link failure: {api_err}")
+                st.error(f"Network link failure: {api_err}")
 
     # HISTORICAL ACTION MODERATION CONTROLS (UNDO SYSTEM)
     st.markdown("---")
     st.markdown("<h3 style='color: #e67e22;'>⏪ Transaction History Undo Vault</h3>", unsafe_allow_html=True)
-    st.caption("Made a mistake typing your logs? Use these dynamic triggers to extract and delete the last saved rows instantly.")
     
     col_del_1, col_del_2 = st.columns(2)
     with col_del_1:
         if st.button("🗑️ Remove Last Entered Expense Row", use_container_width=True):
             try:
                 del_res = requests.post(WEBAPP_URL, json={"action": "delete_last", "type": "Expense"})
-                st.warning(f"Server Response: {del_res.text}")
-                st.cache_data.clear()
-                st.rerun()
+                if "Success" in del_res.text:
+                    st.success("Last Expense row successfully wiped out!")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.error(f"Delete Failed. Google Server Output: {del_res.text[:300]}")
             except Exception as e: st.error(f"Error: {e}")
             
     with col_del_2:
         if st.button("🗑️ Remove Last Entered Income Row", use_container_width=True):
             try:
                 del_res = requests.post(WEBAPP_URL, json={"action": "delete_last", "type": "Income"})
-                st.warning(f"Server Response: {del_res.text}")
-                st.cache_data.clear()
-                st.rerun()
+                if "Success" in del_res.text:
+                    st.success("Last Income row successfully wiped out!")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.error(f"Delete Failed. Google Server Output: {del_res.text[:300]}")
             except Exception as e: st.error(f"Error: {e}")
 
     st.markdown("---")
@@ -164,43 +175,33 @@ with tab_visuals:
     if selected_month:
         metrics = monthly_aggregates[selected_month]
         
-        # Core Metrics Display
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🎬 Start Pool Balance", f"{metrics['Start']:,.2f} EGP")
-        m2.metric("📥 Liquid Inflow (Green/Blue)", f"{metrics['Income']:,.2f} EGP")
-        m3.metric("📤 Total Expenses (Red)", f"{metrics['Expenses']:,.2f} EGP")
+        m2.metric("📥 Liquid Inflow", f"{metrics['Income']:,.2f} EGP")
+        m3.metric("📤 Total Expenses", f"{metrics['Expenses']:,.2f} EGP")
         m4.metric("🏁 Net Rolling Cash Pool", f"{metrics['End']:,.2f} EGP")
         
         st.markdown("---")
         
-        # ADVANCED VISUALIZATION 1: BURNRATE PACING CHART (DAILY / WEEKLY PACING)
         st.subheader("📉 Micro Spending Velocity & Burn-Rate Pacing")
-        st.markdown("This line tracks your actual cumulative spending over days of the month vs an ideal linear run-rate ceiling line.")
-        
         month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy()
         month_exp['Day'] = month_exp['Date'].dt.day
         
-        # Compile a daily timeline dataframe mapping rows from Day 1 up to Day 30
         daily_timeline = pd.DataFrame({'Day': range(1, 31)})
         daily_sums = month_exp.groupby('Day')['Amount'].sum().reset_index()
         daily_timeline = pd.merge(daily_timeline, daily_sums, on='Day', how='left').fillna(0.0)
         daily_timeline['Actual Cumulative Spend'] = daily_timeline['Amount'].cumsum()
-        
-        # Build standard linear idealized slope distribution vector
         daily_timeline['Target Ceiling Slope'] = (TOTAL_MONTHLY_PLANNED_EXPENSE / 30.0) * daily_timeline['Day']
         
         fig_pacing = go.Figure()
         fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Target Ceiling Slope'], name="Ideal Burn Rate Slope (Yellow)", line=dict(color='#f1c40f', width=2, dash='dash')))
         fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Actual Cumulative Spend'], name="Your Realized Outflow Velocity (Blue)", line=dict(color='#3498db', width=4)))
-        fig_pacing.update_layout(xaxis_title="Day of Month Timeline", yaxis_title="EGP Value Outflow Pool", legend=dict(x=0.01, y=0.99))
+        fig_pacing.update_layout(xaxis_title="Day of Month Timeline", yaxis_title="EGP Value Outflow Pool")
         st.plotly_chart(fig_pacing, use_container_width=True)
         
         st.markdown("---")
         
-        # ADVANCED VISUALIZATION 2: CATEGORY CEILING METERS
         st.subheader("🚨 Category Expense Cap Alert Threshold Matrix")
-        st.markdown("These progressive tracking meters monitor exactly how close individual variable buckets are to exceeding their planned caps.")
-        
         cat_cols_1, cat_cols_2 = st.columns(2)
         actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
         
@@ -208,13 +209,11 @@ with tab_visuals:
             actual_spent = actual_cat_spending.get(category, 0.0)
             pct_consumed = (actual_spent / planned_cap) if planned_cap > 0 else 0.0
             
-            # Select alerting color indicators
-            if pct_consumed >= 1.0: color_hex = "#e74c3c"     # Crimson Red (Exceeded)
-            elif pct_consumed >= 0.85: color_hex = "#f39c12"  # Vivid Amber Yellow
-            else: color_hex = "#2ecc71"                       # Safe Emerald Green
+            if pct_consumed >= 1.0: color_hex = "#e74c3c"
+            elif pct_consumed >= 0.85: color_hex = "#f39c12"
+            else: color_hex = "#2ecc71"
             
             target_column = cat_cols_1 if idx % 2 == 0 else cat_cols_2
-            
             with target_column:
                 st.markdown(f"**{category}** (Limit: {planned_cap:,.0f} EGP)")
                 fig_progress = go.Figure(go.Indicator(
@@ -232,6 +231,4 @@ with tab_visuals:
                     }
                 ))
                 fig_progress.update_layout(height=140, margin=dict(l=20, r=20, t=20, b=20))
-                
-                # FIXED: Added unique keys parameter to eliminate elements overlap errors
                 st.plotly_chart(fig_progress, use_container_width=True, key=f"gauge_chart_{category}")

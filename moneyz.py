@@ -15,8 +15,7 @@ SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
 csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
 
 # ⚠️ CRITICAL ACTION: Paste your Google Web App URL ending in /exec below:
-WEBAPP_URL = "REPLACE_WITH_YOUR_COPIED_APPS_SCRIPT_URL"
-
+https://script.google.com/macros/s/AKfycbzJwFoRsR4GBBctlWQlTvwpeQM6sG1Kd-71KoMUe7uDiTKKGjtLLMnqPWO1fKC1FWIPWQ/exec
 # Hardcoded Baseline Target Ceilings from your master planning schema
 PLANNED_BUDGETS = {
     'Food': 15000.0, 'Allowance': 4000.0, 'Medication/Health': 3500.0,

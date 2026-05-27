@@ -122,7 +122,14 @@ with tab_input:
                 updated_sheet.iloc[next_inc_idx, 7] = entry_desc
                 updated_sheet.iloc[next_inc_idx, 8] = entry_cat
 
-            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=updated_sheet, header=False)
+            # CRITICAL RE-ALIGNMENT FIX:
+            # We transform row 0 text into the columns headers array signature.
+            # This completely satisfies the Streamlit update rules without throwing TypeErrors.
+            sheet_title_headers = updated_sheet.iloc[0].fillna("").astype(str).tolist()
+            updated_sheet.columns = sheet_title_headers
+            payload_data = updated_sheet.iloc[1:]
+
+            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=payload_data)
             st.balloons()
             st.success("Successfully compiled and saved to your spreadsheet layout!")
             st.cache_data.clear()

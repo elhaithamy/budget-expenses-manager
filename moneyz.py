@@ -13,6 +13,7 @@ st.markdown("---")
 
 # 2. ESTABLISH SECURE DATA CONNECTIONS
 SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
+GID_ID = "1026248782" # Your exact validated spreadsheet tab ID
 
 # Your validated live Web App Execution endpoint
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzJwFoRsR4GBBctlWQlTvwpeQM6sG1Kd-71KoMUe7uDiTKKGjtLLMnqPWO1fKC1FWIPWQ/exec"
@@ -42,7 +43,8 @@ def clean_numeric(val):
 @st.cache_data(ttl=0) 
 def load_side_by_side_data():
     cache_buster = int(time.time())
-    live_csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions&cb={cache_buster}"
+    # FIXED: Swapped to direct export download endpoint to completely crush Google CDN latency delay
+    live_csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_ID}&cb={cache_buster}"
     
     # Force reading raw data as strings to prevent automatic format dropping
     raw_df = pd.read_csv(live_csv_url, header=None, dtype=str)
@@ -55,9 +57,8 @@ def load_side_by_side_data():
     exp_raw['Type'] = 'Expense'
     exp_raw['Is_Liquid'] = True
     
-    # UPGRADED: Fallback date parsing handles mixed layouts without discarding values
     exp_raw['Date'] = pd.to_datetime(exp_raw['Date'], format='mixed', errors='coerce')
-    exp_raw['Date'] = exp_raw['Date'].fillna(datetime.now()) # Keep row visible even if date format is weird
+    exp_raw['Date'] = exp_raw['Date'].fillna(datetime.now()) 
     
     # Process Income (Columns F-I)
     inc_raw = raw_df.iloc[2:, [5, 6, 7, 8]].copy()
@@ -128,15 +129,8 @@ with tab_input:
                 st.error(f"Network link failure: {api_err}")
 
     st.markdown("---")
-    
-    # 🔍 THE SYSTEM DEBUGGER EXPANDER (Let's pinpoint why it's reading zero)
-    with st.expander("🔍 🛠️ Live Sheet Diagnostics Panel (Click to Open)"):
-        st.write(f"**Total raw rows imported from Google Sheets:** {len(raw_spreadsheet)}")
-        st.write(f"**Total active transactions successfully parsed by Python:** {len(df)}")
-        st.markdown("**First 10 lines of raw text pulled directly from your Google Sheet:**")
-        st.dataframe(raw_spreadsheet.head(10))
-        st.markdown("**Python compiled transaction database:**")
-        st.dataframe(df)
+    st.markdown("### 📋 Previewing Your Live Side-by-Side Database")
+    st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)
 
 # =========================================================
 # TAB 2: CEILING PERFORMANCE VISUALS

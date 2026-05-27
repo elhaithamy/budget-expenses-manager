@@ -75,7 +75,7 @@ except Exception as e:
     st.error(f"❌ Connection Sync Error: {e}")
     st.stop()
 
-# 3. APP NAVIGATION TABS (DELETION COMPONENT COMPLETELY REMOVED)
+# 3. APP NAVIGATION TABS
 tab_input, tab_visuals = st.tabs(["📥 Tab 1: Live Data Entry Form", "📊 Tab 2: Visual Ceiling Analytics"])
 
 # =========================================================
@@ -116,7 +116,7 @@ with tab_input:
     st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)
 
 # =========================================================
-# TAB 2: ENHANCED VISUAL CEILING METERS
+# TAB 2: SIMPLIFIED CEILING PERFORMANCE VISUALS
 # =========================================================
 with tab_visuals:
     unique_months = sorted(df['Month'].unique())
@@ -144,51 +144,91 @@ with tab_visuals:
     if selected_month:
         metrics = monthly_aggregates[selected_month]
         month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy()
+        actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
         
-        # 📊 UPGRADE 1: OVERALL MONTHLY EXPENSE MASTER METER
-        st.subheader("🏁 Overall Monthly Expense vs. Planned Budget Ceiling")
-        total_actual_expenses = metrics['Expenses']
-        pct_total_consumed = total_actual_expenses / TOTAL_MONTHLY_PLANNED_EXPENSE if TOTAL_MONTHLY_PLANNED_EXPENSE > 0 else 0.0
-        
-        if pct_total_consumed >= 1.0: overall_color = "#e74c3c"     # Red (Exceeded limits)
-        elif pct_total_consumed >= 0.85: overall_color = "#f39c12"  # Amber Yellow (Danger Warning zone)
-        else: overall_color = "#2ecc71"                             # Green (Safe budget pacing)
-        
-        fig_overall = go.Figure(go.Indicator(
-            mode = "gauge+number+delta",
-            value = total_actual_expenses,
-            delta = {'reference': TOTAL_MONTHLY_PLANNED_EXPENSE, 'position': "top", 'valueformat': ',.2f EGP'},
-            gauge = {
-                'axis': {'range': [None, max(TOTAL_MONTHLY_PLANNED_EXPENSE * 1.2, total_actual_expenses * 1.1)], 'tickformat': ',.0f EGP'},
-                'bar': {'color': overall_color},
-                'steps': [
-                    {'range': [0, TOTAL_MONTHLY_PLANNED_EXPENSE * 0.85], 'color': "rgba(46, 204, 113, 0.1)"},
-                    {'range': [TOTAL_MONTHLY_PLANNED_EXPENSE * 0.85, TOTAL_MONTHLY_PLANNED_EXPENSE], 'color': "rgba(243, 156, 18, 0.1)"},
-                    {'range': [TOTAL_MONTHLY_PLANNED_EXPENSE, max(TOTAL_MONTHLY_PLANNED_EXPENSE * 1.2, total_actual_expenses * 1.1)], 'color': "rgba(231, 76, 60, 0.1)"}
-                ],
-                'threshold': {
-                    'line': {'color': "#c0392b", 'width': 5},
-                    'thickness': 0.8,
-                    'value': TOTAL_MONTHLY_PLANNED_EXPENSE
-                }
-            }
-        ))
-        fig_overall.update_layout(height=280, margin=dict(l=50, r=50, t=40, b=20))
-        st.plotly_chart(fig_overall, use_container_width=True, key="overall_master_budget_gauge")
+        # Build clean structural matrix metrics matching requirements
+        performance_records = []
+        breached_categories = []
+        warning_categories = []
+
+        for category, planned_cap in PLANNED_BUDGETS.items():
+            actual_spent = actual_cat_spending.get(category, 0.0)
+            pct_used = (actual_spent / planned_cap * 100) if planned_cap > 0 else 0.0
+            remaining = planned_cap - actual_spent
+            
+            if actual_spent > planned_cap:
+                status = "🔴 Breached"
+                color_group = "Wiped Out (>100%)"
+                breached_categories.append(f"⚠️ **{category}**: Exceeded limit by {abs(remaining):,.2f} EGP!")
+            elif actual_spent >= planned_cap * 0.85:
+                status = "🟡 Warning"
+                color_group = "Danger Zone (85%-100%)"
+                warning_categories.append(f"⚡ **{category}**: Consumed {pct_used:.1f}% of its cap.")
+            else:
+                status = "🟢 Safe"
+                color_group = "Safe Under Target (<85%)"
+                
+            performance_records.append({
+                "Budget Category": category,
+                "Planned Cap (EGP)": planned_cap,
+                "Actual Spent (EGP)": actual_spent,
+                "Remaining Available (EGP)": remaining,
+                "Budget Consumed %": round(pct_used, 1),
+                "Status": status,
+                "Alert Color Level": color_group
+            })
+            
+        perf_df = pd.DataFrame(performance_records)
+
+        # 🚨 UPGRADE 1: AUTOMATED INSTANT BREACH BANNER GRID
+        if breached_categories:
+            st.error("### 🚨 Absolute Budget Ceiling Breach Alerts!")
+            for alert in breached_categories:
+                st.markdown(alert)
+        if warning_categories:
+            st.warning("### ⚡ Budget Warning Zone Notifications (Above 85%)")
+            for warn in warning_categories:
+                st.markdown(warn)
+        if not breached_categories and not warning_categories:
+            st.success("### ✅ Perfect Pacing! All variable categories are safely inside their planned limits.")
 
         st.markdown("---")
         
-        # Core Metrics KPI Panel Blocks
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("🎬 Start Pool Balance", f"{metrics['Start']:,.2f} EGP")
-        m2.metric("📥 Liquid Inflow (Green/Blue)", f"{metrics['Income']:,.2f} EGP")
-        m3.metric("📤 Total Expenses (Red)", f"{metrics['Expenses']:,.2f} EGP")
-        m4.metric("🏁 Net Rolling Cash Pool", f"{metrics['End']:,.2f} EGP")
+        # 📊 UPGRADE 2: UNIFIED 100% CEILING PERFORMANCE BAR CHART
+        st.subheader("📊 Category Cap Consumed Progress Map")
+        st.markdown("Every bar shows your total usage percentage. If any bar crosses the red dotted line at **100%**, it is over budget.")
         
+        fig_clean_bars = px.bar(
+            perf_df,
+            x="Budget Consumed %",
+            y="Budget Category",
+            color="Alert Color Level",
+            orientation="h",
+            text="Budget Consumed %",
+            color_discrete_map={
+                "Wiped Out (>100%)": "#e74c3c",       # Direct Crimson Red
+                "Danger Zone (85%-100%)": "#f39c12",  # Amber Alert Yellow
+                "Safe Under Target (<85%)": "#2ecc71" # Safe Green
+            },
+            category_orders={"Budget Category": list(PLANNED_BUDGETS.keys())}
+        )
+        
+        # Add visual benchmark guideline representing 100% absolute ceiling
+        fig_clean_bars.add_vline(x=100.0, line_width=3, line_dash="dash", line_color="#c0392b", annotation_text="BUDGET CEILING LINE (100%)", annotation_position="top right")
+        fig_clean_bars.update_traces(texttemplate='%{text}%', textposition='outside')
+        fig_clean_bars.update_layout(xaxis=dict(range=[0, max(120, perf_df['Budget Consumed %'].max() + 15)]), height=500)
+        st.plotly_chart(fig_clean_bars, use_container_width=True, key="unified_performance_bar_chart")
+
         st.markdown("---")
         
-        # Daily Velocity Run-rate Pacing Plot
-        st.subheader("📉 Micro Spending Velocity & Burn-Rate Pacing")
+        # Performance Data Grid logs
+        st.subheader("📋 Structural Financial Performance Ledger")
+        st.dataframe(perf_df[["Budget Category", "Planned Cap (EGP)", "Actual Spent (EGP)", "Remaining Available (EGP)", "Budget Consumed %", "Status"]], use_container_width=True)
+
+        st.markdown("---")
+        
+        # Daily Run-rate pacing trend line plot
+        st.subheader("📉 Daily Cash Outflow Burn-Rate Velocity")
         month_exp['Day'] = month_exp['Date'].dt.day
         daily_timeline = pd.DataFrame({'Day': range(1, 31)})
         daily_sums = month_exp.groupby('Day')['Amount'].sum().reset_index()
@@ -197,47 +237,7 @@ with tab_visuals:
         daily_timeline['Target Ceiling Slope'] = (TOTAL_MONTHLY_PLANNED_EXPENSE / 30.0) * daily_timeline['Day']
         
         fig_pacing = go.Figure()
-        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Target Ceiling Slope'], name="Ideal Burn Rate Slope (Yellow)", line=dict(color='#f1c40f', width=2, dash='dash')))
-        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Actual Cumulative Spend'], name="Your Realized Outflow Velocity (Blue)", line=dict(color='#3498db', width=4)))
-        fig_pacing.update_layout(xaxis_title="Day of Month Timeline", yaxis_title="EGP Value Outflow Pool")
+        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Target Ceiling Slope'], name="Ideal Month Slope Target (Yellow)", line=dict(color='#f1c40f', width=2, dash='dash')))
+        fig_pacing.add_trace(go.Scatter(x=daily_timeline['Day'], y=daily_timeline['Actual Cumulative Spend'], name="Real Cumulative Spending (Blue)", line=dict(color='#3498db', width=4)))
+        fig_pacing.update_layout(xaxis_title="Day of Month Timeline", yaxis_title="Total EGP Outflow Pool")
         st.plotly_chart(fig_pacing, use_container_width=True, key="daily_burnrate_pacing_trend")
-        
-        st.markdown("---")
-        
-        # 🚨 UPGRADE 2: ENHANCED COLORFUL CATEGORY CEILING METERS
-        st.subheader("🚨 Category Expense Cap Alert Threshold Matrix")
-        cat_cols_1, cat_cols_2 = st.columns(2)
-        actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
-        
-        for idx, (category, planned_cap) in enumerate(PLANNED_BUDGETS.items()):
-            actual_spent = actual_cat_spending.get(category, 0.0)
-            pct_consumed = (actual_spent / planned_cap) if planned_cap > 0 else 0.0
-            
-            if pct_consumed >= 1.0: color_hex = "#e74c3c"
-            elif pct_consumed >= 0.85: color_hex = "#f39c12"
-            else: color_hex = "#2ecc71"
-            
-            target_column = cat_cols_1 if idx % 2 == 0 else cat_cols_2
-            with target_column:
-                st.markdown(f"**{category}** (Cap: {planned_cap:,.0f} EGP)")
-                fig_progress = go.Figure(go.Indicator(
-                    mode = "gauge+number",
-                    value = actual_spent,
-                    domain = {'x': [0, 1], 'y': [0, 1]},
-                    gauge = {
-                        'axis': {'range': [None, max(planned_cap * 1.2, actual_spent * 1.1)], 'tickformat': ',.0f EGP'},
-                        'bar': {'color': color_hex},
-                        'steps': [
-                            {'range': [0, planned_cap * 0.85], 'color': "rgba(46, 204, 113, 0.05)"},
-                            {'range': [planned_cap * 0.85, planned_cap], 'color': "rgba(243, 156, 18, 0.05)"},
-                            {'range': [planned_cap, max(planned_cap * 1.2, actual_spent * 1.1)], 'color': "rgba(231, 76, 60, 0.05)"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "red", 'width': 3},
-                            'thickness': 0.75,
-                            'value': planned_cap
-                        }
-                    }
-                ))
-                fig_progress.update_layout(height=145, margin=dict(l=30, r=30, t=15, b=15))
-                st.plotly_chart(fig_progress, use_container_width=True, key=f"enhanced_gauge_chart_{category}")

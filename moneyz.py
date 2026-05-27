@@ -14,8 +14,7 @@ SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
 csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
 
 # PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BETWEEN THE QUOTES BELOW:
-WEBAPP_URL = "REPLACE_WITH_YOUR_COPIED_APPS_SCRIPT_URL"
-
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbz_Example_Link_XYZ/exec"
 def clean_numeric(val):
     if pd.isna(val) or str(val).strip() == "": return 0.0
     val_cleaned = str(val).replace('£', '').replace('$', '').replace(',', '').strip()

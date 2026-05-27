@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import requests
+import time
 from datetime import datetime
 
 # 1. LIVE PAGE SETTINGS
@@ -12,7 +13,6 @@ st.markdown("---")
 
 # 2. ESTABLISH SECURE DATA CONNECTIONS
 SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
-csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
 
 # Your validated live Web App Execution endpoint
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzJwFoRsR4GBBctlWQlTvwpeQM6sG1Kd-71KoMUe7uDiTKKGjtLLMnqPWO1fKC1FWIPWQ/exec"
@@ -25,22 +25,29 @@ PLANNED_BUDGETS = {
 }
 TOTAL_MONTHLY_PLANNED_EXPENSE = sum(PLANNED_BUDGETS.values())
 
-# 🔄 NEW: GLOBAL SYSTEM SIDEBAR CONTROLS
+# 🔄 SYSTEM CONTROLS: FORCED ANTI-CACHE RESET BUTTON
 st.sidebar.markdown("## ⚙️ Data Control Center")
 if st.sidebar.button("🔄 Sync & Force Refresh", use_container_width=True):
     st.cache_data.clear()
-    st.sidebar.success("Cache cleared! Pulling fresh data...")
+    st.sidebar.success("Cache cleared successfully! Fetching fresh data...")
+    time.sleep(0.5)
     st.rerun()
 
 def clean_numeric(val):
     if pd.isna(val) or str(val).strip() == "": return 0.0
-    val_cleaned = str(val).replace('£', '').replace('$', '').replace(',', '').strip()
+    # Strip spaces, symbols, and trailing alphanumeric currency labels safely
+    val_cleaned = str(val).replace('£', '').replace('$', '').replace(',', '').replace('EGP', '').strip()
     try: return float(val_cleaned)
     except: return 0.0
 
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=0) # Explicitly set local memory cache lifespan to zero
 def load_side_by_side_data():
-    raw_df = pd.read_csv(csv_url, header=None)
+    # CACHE BUSTER RULE: Generate a fresh epoch unique ID string on every execution
+    cache_buster = int(time.time())
+    live_csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions&cb={cache_buster}"
+    
+    # Force pandas to read raw lines strictly as generic string layouts
+    raw_df = pd.read_csv(live_csv_url, header=None, dtype=str)
     
     # Process Expenses (Columns A-D)
     exp_raw = raw_df.iloc[2:, [0, 1, 2, 3]].copy()
@@ -110,11 +117,11 @@ with tab_input:
                 response = requests.post(WEBAPP_URL, json=payload)
                 if response.status_code == 200 and "Success" in response.text:
                     st.balloons()
-                    st.success("Record appended successfully!")
+                    st.success("Record written to Google Sheets!")
                     st.cache_data.clear()
                     st.rerun()
                 else:
-                    st.error("⚠️ Google Connection Refused Entry.")
+                    st.error("⚠️ Google Script Configuration Error.")
             except Exception as api_err:
                 st.error(f"Network link failure: {api_err}")
 
@@ -151,14 +158,16 @@ with tab_visuals:
     if selected_month:
         metrics = monthly_aggregates[selected_month]
         month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy()
-        actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
+        
+        # FOOLPROOF ROBUST EXTRACTOR: Convert keys to lowercase to fix space/capital mismatches
+        actual_cat_spending = {str(k).strip().lower(): v for k, v in month_exp.groupby('Category')['Amount'].sum().to_dict().items()}
         
         performance_records = []
         breached_categories = []
         warning_categories = []
 
         for category, planned_cap in PLANNED_BUDGETS.items():
-            actual_spent = actual_cat_spending.get(category, 0.0)
+            actual_spent = actual_cat_spending.get(category.lower(), 0.0)
             pct_used = (actual_spent / planned_cap * 100) if planned_cap > 0 else 0.0
             remaining = planned_cap - actual_spent
             

@@ -8,7 +8,7 @@ from datetime import datetime
 
 # 1. LIVE DASHBOARD CONFIGURATIONS
 st.set_page_config(page_title="EGP Wealth Center", layout="wide")
-st.title("🏆 Unified Financial Command Center (EGP)")
+st.title("🏆 Financial Command Center (EGP)")
 st.markdown("---")
 
 # 2. SECURE CLOUD STORAGE LINKS
@@ -22,11 +22,10 @@ PLANNED_BUDGETS = {
     'Mother': 4000.0, 'Gas': 1500.0, 'BabySitter': 11000.0, 'Nurse': 1000.0,
     'Physical Therapy': 7200.0, 'Rent': 14200.0, 'Rent 2': 1500.0, 'Credit Card': 10000.0
 }
+TOTAL_PLANNED_EXPENSE = sum(PLANNED_BUDGETS.values())
 
 # 🔄 SIDEBAR CONTROL PANEL
 st.sidebar.markdown("## ⚙️ Data Control Center")
-selected_month = st.sidebar.text_input("Active Analytics Month (YYYY-MM)", datetime.now().strftime('%Y-%m'))
-
 if st.sidebar.button("🔄 Sync & Force Refresh", use_container_width=True):
     st.cache_data.clear()
     st.sidebar.success("Cache cleared! Re-fetching live cells...")
@@ -45,13 +44,17 @@ def load_realtime_database():
     live_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_ID}&cb={int(time.time())}"
     raw_df = pd.read_csv(live_url, header=None, dtype=str)
     
+    # Anti-IndexError Protection: Pad columns if sheet shape is truncated
+    while raw_df.shape[1] < 9:
+        raw_df[raw_df.shape[1]] = ""
+    
     # Isolate Expenses Matrix (Columns A-D)
     exp = raw_df.iloc[2:, [0, 1, 2, 3]].copy()
     exp.columns = ['Date', 'Amount', 'Description', 'Category']
     exp['Amount'] = exp['Amount'].apply(clean_numeric)
     exp = exp[exp['Amount'] > 0]
     exp['Type'] = 'Expense'
-    exp['Date'] = pd.to_datetime(exp['Date'], format='mixed', errors='coerce').fillna(datetime.now())
+    exp['Date'] = pd.to_datetime(exp['Date'], format='mixed', errors='coerce').fillna(pd.Timestamp(datetime.now().date()))
     
     # Isolate Income Matrix (Columns F-I)
     inc = raw_df.iloc[2:, [5, 6, 7, 8]].copy()
@@ -59,7 +62,7 @@ def load_realtime_database():
     inc['Amount'] = inc['Amount'].apply(clean_numeric)
     inc = inc[inc['Amount'] > 0]
     inc['Type'] = 'Income'
-    inc['Date'] = pd.to_datetime(inc['Date'], format='mixed', errors='coerce').fillna(datetime.now())
+    inc['Date'] = pd.to_datetime(inc['Date'], format='mixed', errors='coerce').fillna(pd.Timestamp(datetime.now().date()))
     
     combined = pd.concat([exp, inc], ignore_index=True)
     combined['Month'] = combined['Date'].dt.to_period('M').astype(str)
@@ -71,10 +74,23 @@ except Exception as e:
     st.error(f"❌ Spreadsheet Connection Failure: {e}")
     st.stop()
 
+# Dynamic Month Selector Dropdown to completely eliminate spelling errors
+if not df.empty:
+    unique_months = sorted(df['Month'].unique())
+else:
+    unique_months = [datetime.now().strftime('%Y-%m')]
+selected_month = st.sidebar.selectbox("Active View Month", unique_months, index=len(unique_months)-1)
+
 # Filter datasets down to chosen active month view safely
 month_df = df[df['Month'] == selected_month] if not df.empty else pd.DataFrame()
 month_expenses = month_df[month_df['Type'] == 'Expense'] if not month_df.empty else pd.DataFrame()
-actual_spending_map = month_expenses.groupby('Category')['Amount'].sum().to_dict() if not month_expenses.empty else {}
+month_income = month_df[month_df['Type'] == 'Income'] if not month_df.empty else pd.DataFrame()
+
+# Robust lowercase/stripped category matching map
+actual_spending_map = {}
+if not month_expenses.empty:
+    for cat, amt in month_expenses.groupby('Category')['Amount'].sum().items():
+        actual_spending_map[str(cat).strip().lower()] = amt
 
 # =========================================================
 # SECTION 1: LIVE DATA ENTRY FORM
@@ -109,93 +125,87 @@ with st.form("unified_entry_form", clear_on_submit=True):
 st.markdown("---")
 
 # =========================================================
-# SECTION 2: LIVE PERFORMANCE STATUS LEDGER
+# SECTION 2: PERFORMANCE STATUS LEDGER (WITH EXACT RULES)
 # =========================================================
-st.subheader("📋 Structural Financial Performance Status Ledger")
+st.subheader(f"📋 Budget Cap Status Ledger for {selected_month}")
 
 status_records = []
+total_actual_spent = 0.0
+
 for category, planned in PLANNED_BUDGETS.items():
-    actual = actual_spending_map.get(category, 0.0)
-    pct_of_plan = (actual / planned) if planned > 0 else 0.0
+    actual = actual_spending_map.get(category.strip().lower(), 0.0)
+    total_actual_spent += actual
     remaining = planned - actual
+    pct_used = (actual / planned * 100) if planned > 0 else 0.0
     
-    # STRICT USER STATUS THRESHOLD IMPLEMENTATION:
+    # 🚨 EXACT USER STATUS THRESHOLD IMPLEMENTATION:
     # Red: Exceeding planned limits
-    # Yellow: Below planned but within 15% of the ceiling (85% - 100% consumed)
-    # Green: Safely below planned by more than 30% (0% - 70% consumed)
+    # Yellow: Below planned but within 15% of the ceiling (>= 85% consumed)
+    # Green: Safely below planned by more than 30% (<= 70% consumed)
     if actual > planned:
-        status_label = "🔴 Red (Exceeding Planned Ceiling)"
+        status_label = "🔴 Red (Exceeding Planned)"
     elif actual >= (planned * 0.85):
-        status_label = "🟡 Yellow (Warning: Within 15% of Cap)"
-    elif actual <= (planned * 0.70):
-        status_label = "🟢 Green (Safe: Below Planned by 30%+)"
+        status_label = "🟡 Yellow (Close to Ceiling)"
     else:
-        status_label = "🟢 Green (Safe Baseline Usage)"
+        status_label = "🟢 Green (Safe Target)"
         
     status_records.append({
         "Expense Category": category,
-        "Planned Cap (EGP)": f"{planned:,.2f}",
-        "Actual Spent (EGP)": f"{actual:,.2f}",
-        "Remaining Balance (EGP)": f"{remaining:,.2f}",
-        "Cap Consumed %": f"{pct_of_plan * 100:.1f}%",
+        "Planned Cap (EGP)": planned,
+        "Actual Spent (EGP)": actual,
+        "Remaining Balance (EGP)": remaining,
+        "Cap Consumed %": f"{pct_used:.1f}%",
         "Current Spending Status": status_label
     })
 
-st.dataframe(pd.DataFrame(status_records), use_container_width=True)
+perf_df = pd.DataFrame(status_records)
+st.dataframe(perf_df, use_container_width=True)
 st.markdown("---")
 
 # =========================================================
-# SECTION 3: TARGETED ANALYTICS CHARTS (EXACTLY TWO VISUALS)
+# SECTION 3: TWO TARGETED CHARTS (OVERALL PERF & SAVINGS RATIO)
 # =========================================================
-st.subheader(f"📊 Macro Pacing & Savings Visualization for {selected_month}")
+st.subheader(f"📊 Macro Metrics for {selected_month}")
 chart_col_left, chart_col_right = st.columns(2)
 
 with chart_col_left:
-    # CHART 1: OVERALL PERFORMANCE OF PLANNED VS ACTUAL (BAR CHART)
-    bar_data = []
-    for category, planned in PLANNED_BUDGETS.items():
-        actual = actual_spending_map.get(category, 0.0)
-        bar_data.append({"Category": category, "EGP Amount": planned, "Metrics Layout": "Planned Cap Baseline"})
-        bar_data.append({"Category": category, "EGP Amount": actual, "Metrics Layout": "Actual Live Outflow"})
-        
-    if bar_data:
-        fig_bar = px.bar(
-            pd.DataFrame(bar_data),
-            x="Category",
-            y="EGP Amount",
-            color="Metrics Layout",
-            barmode="group",
-            title="Planned Caps vs. Actual Live Outflows",
-            color_discrete_map={"Planned Cap Baseline": "#3498db", "Actual Live Outflow": "#e74c3c"}
-        )
-        st.plotly_chart(fig_bar, use_container_width=True, key="overall_planned_vs_actual_bar")
-    else:
-        st.info("No expense data found to populate bar matrix.")
+    st.markdown("**Chart 1: Overall Monthly Expenses (Planned vs Actual)**")
+    overall_bar_df = pd.DataFrame({
+        "Budget Metric": ["Total Planned Budget", "Total Actual Expenses"],
+        "EGP Amount": [TOTAL_PLANNED_EXPENSE, total_actual_spent]
+    })
+    fig_bar = px.bar(
+        overall_bar_df,
+        x="Budget Metric",
+        y="EGP Amount",
+        color="Budget Metric",
+        text_auto=',.2f',
+        color_discrete_map={"Total Planned Budget": "#3498db", "Total Actual Expenses": "#e74c3c"}
+    )
+    st.plotly_chart(fig_bar, use_container_width=True, key="overall_performance_bar")
 
 with chart_col_right:
-    # CHART 2: OVERALL SAVINGS % OF TOTAL INCOME (PIE CHART)
-    total_income = month_df[month_df['Type'] == 'Income']['Amount'].sum() if not month_df.empty else 0.0
-    total_expenses = month_expenses['Amount'].sum() if not month_expenses.empty else 0.0
-    net_savings = max(0.0, total_income - total_expenses)
+    st.markdown("**Chart 2: Overall Savings % of Total Income**")
+    total_income_val = month_income['Amount'].sum() if not month_income.empty else 0.0
+    net_savings_val = max(0.0, total_income_val - total_actual_spent)
     
-    if total_income > 0:
+    if total_income_val > 0:
         pie_df = pd.DataFrame({
-            "Financial Metric": ["Total Expenses Logged", "Net Accumulated Savings"],
-            "EGP Volume": [total_expenses, net_savings]
+            "Financial Segment": ["Total Expenses", "Net Savings Balance"],
+            "EGP Volume": [total_actual_spent, net_savings_val]
         })
         fig_pie = px.pie(
             pie_df,
-            names="Financial Metric",
+            names="Financial Segment",
             values="EGP Volume",
             hole=0.4,
-            title=f"Overall Monthly Savings % of Total Income (Total: {total_income:,.2f} EGP)",
             color_discrete_sequence=["#e74c3c", "#2ecc71"]
         )
         fig_pie.update_traces(textinfo='percent+label')
-        st.plotly_chart(fig_pie, use_container_width=True, key="savings_ratio_pie_chart")
+        st.plotly_chart(fig_pie, use_container_width=True, key="savings_ratio_pie")
     else:
-        st.info("Enter monthly income via Tab 1 form to generate the Savings Ratio Pie Chart.")
+        st.info("💡 Please log your monthly income rows to populate the Savings Ratio Pie Chart.")
 
 st.markdown("---")
-st.markdown("### 📋 Back-End Raw Cell Feed Ledger")
+st.markdown("### 📋 Live Side-by-Side Spreadsheet Cells Preview")
 st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
 from datetime import datetime
 
 # 1. LIVE PAGE SETTINGS
@@ -8,13 +9,12 @@ st.set_page_config(page_title="EGP Wealth Hub", layout="wide")
 st.title("🏆 Financial Command Center (EGP)")
 st.markdown("---")
 
-# 2. ESTABLISH SECURE DATA CONNECTION
+# 2. ESTABLISH SECURE DATA CONNECTIONS
 SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
 csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
-SPREADSHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit"
 
-from streamlit_gsheets import GSheetsConnection
-conn = st.connection("gsheets", type=GSheetsConnection)
+# PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BETWEEN THE QUOTES BELOW:
+WEBAPP_URL = "REPLACE_WITH_YOUR_COPIED_APPS_SCRIPT_URL"
 
 def clean_numeric(val):
     if pd.isna(val) or str(val).strip() == "": return 0.0
@@ -22,7 +22,7 @@ def clean_numeric(val):
     try: return float(val_cleaned)
     except: return 0.0
 
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=1)
 def load_side_by_side_data():
     raw_df = pd.read_csv(csv_url, header=None)
     
@@ -94,45 +94,26 @@ with tab_input:
         save_trigger = st.form_submit_button("🔒 Save Entry to Google Sheet")
         
         if save_trigger and entry_amount > 0:
-            updated_sheet = raw_spreadsheet.copy()
+            # Package form variables into a clean JSON transmission packet
+            payload = {
+                "date": entry_date.strftime("%m/%d/%Y"),
+                "amount": entry_amount,
+                "description": entry_desc,
+                "category": entry_cat,
+                "type": entry_type
+            }
             
-            if entry_type == "Expense":
-                next_exp_idx = 2
-                while next_exp_idx < len(updated_sheet) and pd.notna(updated_sheet.iloc[next_exp_idx, 1]) and str(updated_sheet.iloc[next_exp_idx, 1]).strip() != "":
-                    next_exp_idx += 1
-                
-                if next_exp_idx == len(updated_sheet):
-                    updated_sheet.loc[len(updated_sheet)] = [None] * len(updated_sheet.columns)
-                    
-                updated_sheet.iloc[next_exp_idx, 0] = entry_date.strftime("%m/%d/%Y")
-                updated_sheet.iloc[next_exp_idx, 1] = entry_amount
-                updated_sheet.iloc[next_exp_idx, 2] = entry_desc
-                updated_sheet.iloc[next_exp_idx, 3] = entry_cat
-                
-            else: 
-                next_inc_idx = 2
-                while next_inc_idx < len(updated_sheet) and pd.notna(updated_sheet.iloc[next_inc_idx, 6]) and str(updated_sheet.iloc[next_inc_idx, 6]).strip() != "":
-                    next_inc_idx += 1
-                    
-                if next_inc_idx == len(updated_sheet):
-                    updated_sheet.loc[len(updated_sheet)] = [None] * len(updated_sheet.columns)
-                    
-                updated_sheet.iloc[next_inc_idx, 5] = entry_date.strftime("%m/%d/%Y")
-                updated_sheet.iloc[next_inc_idx, 6] = entry_amount
-                updated_sheet.iloc[next_inc_idx, 7] = entry_desc
-                updated_sheet.iloc[next_inc_idx, 8] = entry_cat
-
-            # CRITICAL RE-ALIGNMENT FIX:
-            # We transform row 0 text into the columns headers array signature.
-            # This completely satisfies the Streamlit update rules without throwing TypeErrors.
-            sheet_title_headers = updated_sheet.iloc[0].fillna("").astype(str).tolist()
-            updated_sheet.columns = sheet_title_headers
-            payload_data = updated_sheet.iloc[1:]
-
-            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Transactions", data=payload_data)
-            st.balloons()
-            st.success("Successfully compiled and saved to your spreadsheet layout!")
-            st.cache_data.clear()
+            try:
+                # Fire data package straight to the Google Gateway Script
+                response = requests.post(WEBAPP_URL, json=payload)
+                if response.status_code == 200:
+                    st.balloons()
+                    st.success("Successfully saved to your Google Spreadsheet layout!")
+                    st.cache_data.clear() # Wipe memory cache to force an instant graph update
+                else:
+                    st.error(f"Gateway rejected transaction. Status: {response.status_code}")
+            except Exception as api_err:
+                st.error(f"Failed to communicate with Google Sheets. Verify Web App URL: {api_err}")
 
     st.markdown("---")
     st.markdown("### 📋 Previewing Your Live Side-by-Side Database")

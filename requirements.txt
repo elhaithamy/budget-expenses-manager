@@ -7,3 +7,7 @@ streamlit
 pandas
 plotly
 st-gsheets-connection
+streamlit
+pandas
+plotly
+requests

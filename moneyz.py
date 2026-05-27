@@ -14,7 +14,7 @@ st.markdown("---")
 SHEET_ID = "1dwZFbG_ibYGO7msBOl2cFnnX4_A-KJ5tkaKJ5XI2Tj8"
 csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Transactions"
 
-# Web App Execution endpoint
+# Your validated live Web App Execution endpoint
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzJwFoRsR4GBBctlWQlTvwpeQM6sG1Kd-71KoMUe7uDiTKKGjtLLMnqPWO1fKC1FWIPWQ/exec"
 
 # Hardcoded Baseline Target Ceilings from your master planning schema
@@ -24,6 +24,13 @@ PLANNED_BUDGETS = {
     'Physical Therapy': 7200.0, 'Rent': 14200.0, 'Rent 2': 1500.0, 'Credit Card': 10000.0
 }
 TOTAL_MONTHLY_PLANNED_EXPENSE = sum(PLANNED_BUDGETS.values())
+
+# 🔄 NEW: GLOBAL SYSTEM SIDEBAR CONTROLS
+st.sidebar.markdown("## ⚙️ Data Control Center")
+if st.sidebar.button("🔄 Sync & Force Refresh", use_container_width=True):
+    st.cache_data.clear()
+    st.sidebar.success("Cache cleared! Pulling fresh data...")
+    st.rerun()
 
 def clean_numeric(val):
     if pd.isna(val) or str(val).strip() == "": return 0.0
@@ -116,7 +123,7 @@ with tab_input:
     st.dataframe(raw_spreadsheet.fillna(""), use_container_width=True)
 
 # =========================================================
-# TAB 2: SIMPLIFIED CEILING PERFORMANCE VISUALS
+# TAB 2: CEILING PERFORMANCE VISUALS
 # =========================================================
 with tab_visuals:
     unique_months = sorted(df['Month'].unique())
@@ -146,7 +153,6 @@ with tab_visuals:
         month_exp = df[(df['Month'] == selected_month) & (df['Type'] == 'Expense')].copy()
         actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
         
-        # Build clean structural matrix metrics matching requirements
         performance_records = []
         breached_categories = []
         warning_categories = []
@@ -180,7 +186,7 @@ with tab_visuals:
             
         perf_df = pd.DataFrame(performance_records)
 
-        # 🚨 UPGRADE 1: AUTOMATED INSTANT BREACH BANNER GRID
+        # 🚨 INSTANT BREACH BANNER GRID
         if breached_categories:
             st.error("### 🚨 Absolute Budget Ceiling Breach Alerts!")
             for alert in breached_categories:
@@ -194,7 +200,7 @@ with tab_visuals:
 
         st.markdown("---")
         
-        # 📊 UPGRADE 2: UNIFIED 100% CEILING PERFORMANCE BAR CHART
+        # 📊 UNIFIED 100% CEILING PERFORMANCE BAR CHART
         st.subheader("📊 Category Cap Consumed Progress Map")
         st.markdown("Every bar shows your total usage percentage. If any bar crosses the red dotted line at **100%**, it is over budget.")
         
@@ -206,14 +212,13 @@ with tab_visuals:
             orientation="h",
             text="Budget Consumed %",
             color_discrete_map={
-                "Wiped Out (>100%)": "#e74c3c",       # Direct Crimson Red
-                "Danger Zone (85%-100%)": "#f39c12",  # Amber Alert Yellow
-                "Safe Under Target (<85%)": "#2ecc71" # Safe Green
+                "Wiped Out (>100%)": "#e74c3c",       
+                "Danger Zone (85%-100%)": "#f39c12",  
+                "Safe Under Target (<85%)": "#2ecc71" 
             },
             category_orders={"Budget Category": list(PLANNED_BUDGETS.keys())}
         )
         
-        # Add visual benchmark guideline representing 100% absolute ceiling
         fig_clean_bars.add_vline(x=100.0, line_width=3, line_dash="dash", line_color="#c0392b", annotation_text="BUDGET CEILING LINE (100%)", annotation_position="top right")
         fig_clean_bars.update_traces(texttemplate='%{text}%', textposition='outside')
         fig_clean_bars.update_layout(xaxis=dict(range=[0, max(120, perf_df['Budget Consumed %'].max() + 15)]), height=500)

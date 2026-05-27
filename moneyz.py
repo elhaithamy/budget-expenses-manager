@@ -82,7 +82,7 @@ tab_input, tab_visuals = st.tabs(["📥 Tab 1: Live Data Entry & History Control
 # TAB 1: DATA ENTRY FORMS & UNDO HISTORY ENGINE
 # =========================================================
 with tab_input:
-    st.markdown("<h3 style='color: #3498db;'>📝 Append Row Settings</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #3498db;'>📝 Add Transaction Live</h3>", unsafe_allow_html=True)
     
     with st.form("dynamic_entry_form", clear_on_submit=True):
         col_f1, col_f2, col_f3 = st.columns(3)
@@ -108,7 +108,7 @@ with tab_input:
             except Exception as api_err:
                 st.error(f"Network error link failure: {api_err}")
 
-    # NEW: HISTORICAL ACTION MODERATION CONTROLS (UNDO SYSTEM)
+    # HISTORICAL ACTION MODERATION CONTROLS (UNDO SYSTEM)
     st.markdown("---")
     st.markdown("<h3 style='color: #e67e22;'>⏪ Transaction History Undo Vault</h3>", unsafe_allow_html=True)
     st.caption("Made a mistake typing your logs? Use these dynamic triggers to extract and delete the last saved rows instantly.")
@@ -197,35 +197,32 @@ with tab_visuals:
         
         st.markdown("---")
         
-        # ADVANCED VISUALIZATION 2: RE-ENGINEERED CATEGORY CEILING METERS
+        # ADVANCED VISUALIZATION 2: CATEGORY CEILING METERS
         st.subheader("🚨 Category Expense Cap Alert Threshold Matrix")
         st.markdown("These progressive tracking meters monitor exactly how close individual variable buckets are to exceeding their planned caps.")
         
         cat_cols_1, cat_cols_2 = st.columns(2)
-        
-        # Calculate individual expenditure weights per structural category assignments
         actual_cat_spending = month_exp.groupby('Category')['Amount'].sum().to_dict()
         
         for idx, (category, planned_cap) in enumerate(PLANNED_BUDGETS.items()):
             actual_spent = actual_cat_spending.get(category, 0.0)
             pct_consumed = (actual_spent / planned_cap) if planned_cap > 0 else 0.0
             
-            # Select alerting color context indicators based on consumption parameters
-            if pct_consumed >= 1.0: color_hex = "#e74c3c" # Crimson Red (Exceeded)
-            elif pct_consumed >= 0.85: color_hex = "#f39c12" # Vivid Amber Yellow (Warning Boundary)
-            else: color_hex = "#2ecc71" # Safe Emerald Green
+            # Select alerting color indicators
+            if pct_consumed >= 1.0: color_hex = "#e74c3c"     # Crimson Red (Exceeded)
+            elif pct_consumed >= 0.85: color_hex = "#f39c12"  # Vivid Amber Yellow
+            else: color_hex = "#2ecc71"                       # Safe Emerald Green
             
             target_column = cat_cols_1 if idx % 2 == 0 else cat_cols_2
             
             with target_column:
                 st.markdown(f"**{category}** (Limit: {planned_cap:,.0f} EGP)")
-                # Render interactive plot progress bar parameters explicitly
                 fig_progress = go.Figure(go.Indicator(
                     mode = "gauge+number",
                     value = actual_spent,
                     domain = {'x': [0, 1], 'y': [0, 1]},
                     gauge = {
-                        'axis': {'range': [None, planned_cap * 1.2]},
+                        'axis': {'range': [None, max(planned_cap * 1.2, actual_spent * 1.1)]},
                         'bar': {'color': color_hex},
                         'threshold': {
                             'line': {'color': "red", 'width': 3},
@@ -235,4 +232,6 @@ with tab_visuals:
                     }
                 ))
                 fig_progress.update_layout(height=140, margin=dict(l=20, r=20, t=20, b=20))
-                st.plotly_chart(fig_progress, use_container_width=True)
+                
+                # FIXED: Added unique keys parameter to eliminate elements overlap errors
+                st.plotly_chart(fig_progress, use_container_width=True, key=f"gauge_chart_{category}")
